@@ -108,6 +108,10 @@ export async function GET(request: NextRequest) {
     firstName: employees.firstName,
     lastName: employees.lastName,
     preferredName: employees.preferredName,
+    phone: employees.phone,
+    city: employees.city,
+    state: employees.state,
+    country: employees.country,
     createdAt: employees.createdAt,
     updatedAt: employees.updatedAt,
   };
@@ -119,6 +123,22 @@ export async function GET(request: NextRequest) {
   const countRes = whereClause ? await countQuery.where(whereClause) : await countQuery;
   const total = Number(countRes[0]?.count || 0);
 
+  // Query employees with optional LDD joins (using raw SQL for org tables since they're from auth-core)
+  // First get the base employee data
+  interface EmployeeRow {
+    id: string;
+    userEmail: string;
+    firstName: string;
+    lastName: string;
+    preferredName: string | null;
+    phone: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }
+
   const baseQuery = db
     .select({
       id: employees.id,
@@ -126,14 +146,66 @@ export async function GET(request: NextRequest) {
       firstName: employees.firstName,
       lastName: employees.lastName,
       preferredName: employees.preferredName,
+      phone: employees.phone,
+      city: employees.city,
+      state: employees.state,
+      country: employees.country,
       createdAt: employees.createdAt,
       updatedAt: employees.updatedAt,
     })
     .from(employees);
 
-  const items = whereClause
+  const employeeRows: EmployeeRow[] = whereClause
     ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)
     : await baseQuery.orderBy(orderDir).limit(pageSize).offset(offset);
+
+  // Enrich with LDD data using raw SQL query (org tables are from auth-core)
+  const userEmails = employeeRows.map((e: EmployeeRow) => e.userEmail);
+  
+  type LddData = { divisionName: string | null; departmentName: string | null; locationName: string | null };
+  const lddMap: Record<string, LddData> = {};
+  
+  if (userEmails.length > 0) {
+    try {
+      const lddResult = await db.execute(sql`
+        SELECT 
+          a.user_key,
+          d.name as division_name,
+          dp.name as department_name,
+          l.name as location_name
+        FROM org_user_assignments a
+        LEFT JOIN org_divisions d ON d.id = a.division_id
+        LEFT JOIN org_departments dp ON dp.id = a.department_id
+        LEFT JOIN org_locations l ON l.id = a.location_id
+        WHERE a.user_key = ANY(${userEmails})
+      `);
+      
+      const rows = lddResult.rows as Array<{
+        user_key: string;
+        division_name: string | null;
+        department_name: string | null;
+        location_name: string | null;
+      }>;
+      
+      for (const row of rows) {
+        lddMap[row.user_key] = {
+          divisionName: row.division_name,
+          departmentName: row.department_name,
+          locationName: row.location_name,
+        };
+      }
+    } catch {
+      // If org tables don't exist yet, just continue without LDD data
+    }
+  }
+
+  // Merge employee data with LDD
+  const items = employeeRows.map((emp: EmployeeRow) => ({
+    ...emp,
+    divisionName: lddMap[emp.userEmail]?.divisionName || null,
+    departmentName: lddMap[emp.userEmail]?.departmentName || null,
+    locationName: lddMap[emp.userEmail]?.locationName || null,
+  }));
 
   return NextResponse.json({
     items,

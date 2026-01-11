@@ -28,7 +28,7 @@ export function Employees({ onNavigate }) {
         tableId: 'hrm.employees',
         pageSize: 25,
         initialSort: { sortBy: 'lastName', sortOrder: 'asc' },
-        sortWhitelist: ['userEmail', 'firstName', 'lastName', 'preferredName', 'createdAt', 'updatedAt'],
+        sortWhitelist: ['userEmail', 'firstName', 'lastName', 'preferredName', 'phone', 'city', 'state', 'country', 'divisionName', 'departmentName', 'locationName', 'createdAt', 'updatedAt'],
     });
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -88,6 +88,15 @@ export function Employees({ onNavigate }) {
             { key: 'firstName', label: 'First', sortable: true },
             { key: 'lastName', label: 'Last', sortable: true },
             { key: 'preferredName', label: 'Preferred', sortable: true },
+            // Contact info (hidden by default)
+            { key: 'phone', label: 'Phone', sortable: true, defaultHidden: true },
+            { key: 'city', label: 'City', sortable: true, defaultHidden: true },
+            { key: 'state', label: 'State', sortable: true, defaultHidden: true },
+            { key: 'country', label: 'Country', sortable: true, defaultHidden: true },
+            // LDD columns (hidden by default)
+            { key: 'divisionName', label: 'Division', sortable: true, defaultHidden: true },
+            { key: 'departmentName', label: 'Department', sortable: true, defaultHidden: true },
+            { key: 'locationName', label: 'Location', sortable: true, defaultHidden: true },
         ];
     }, []);
     return (_jsxs(Page, { title: "Employees", description: "HRM employee directory", children: [error ? (_jsx(Alert, { variant: "error", title: "Error", children: error })) : null, _jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: "No employees yet.", onRowClick: (row) => navigate(`/hrm/employees/${encodeURIComponent(String(row.id || ''))}`), onRefresh: fetchEmployees, refreshing: loading, total: total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: "hrm.employees", enableViews: true, showColumnVisibility: true }) }), loading && !data ? (_jsx("div", { style: { display: 'flex', justifyContent: 'center', padding: 16 }, children: _jsx(Spinner, {}) })) : null] }));

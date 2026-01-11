@@ -14,6 +14,14 @@ type EmployeeRow = {
   firstName: string;
   lastName: string;
   preferredName: string | null;
+  phone: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  // LDD fields (from org assignments)
+  divisionName: string | null;
+  departmentName: string | null;
+  locationName: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -42,7 +50,7 @@ export function Employees({ onNavigate }: EmployeesProps) {
     tableId: 'hrm.employees',
     pageSize: 25,
     initialSort: { sortBy: 'lastName', sortOrder: 'asc' },
-    sortWhitelist: ['userEmail', 'firstName', 'lastName', 'preferredName', 'createdAt', 'updatedAt'],
+    sortWhitelist: ['userEmail', 'firstName', 'lastName', 'preferredName', 'phone', 'city', 'state', 'country', 'divisionName', 'departmentName', 'locationName', 'createdAt', 'updatedAt'],
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +114,15 @@ export function Employees({ onNavigate }: EmployeesProps) {
       { key: 'firstName', label: 'First', sortable: true },
       { key: 'lastName', label: 'Last', sortable: true },
       { key: 'preferredName', label: 'Preferred', sortable: true },
+      // Contact info (hidden by default)
+      { key: 'phone', label: 'Phone', sortable: true, defaultHidden: true },
+      { key: 'city', label: 'City', sortable: true, defaultHidden: true },
+      { key: 'state', label: 'State', sortable: true, defaultHidden: true },
+      { key: 'country', label: 'Country', sortable: true, defaultHidden: true },
+      // LDD columns (hidden by default)
+      { key: 'divisionName', label: 'Division', sortable: true, defaultHidden: true },
+      { key: 'departmentName', label: 'Department', sortable: true, defaultHidden: true },
+      { key: 'locationName', label: 'Location', sortable: true, defaultHidden: true },
     ];
   }, []);
 

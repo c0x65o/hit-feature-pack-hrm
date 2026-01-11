@@ -1,7 +1,7 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, Shield, User, Users, Clock, Mail, Calendar, Edit2, Phone, MapPin, Camera, Trash2, Download, } from 'lucide-react';
+import { ArrowLeft, Shield, User, Users, Clock, Mail, Calendar, Edit2, Phone, MapPin, Camera, Trash2, Download, Building2, Briefcase, MapPinned, } from 'lucide-react';
 import { downloadVCard } from '../utils/vcard';
 import { useUi } from '@hit/ui-kit';
 import { UserAvatar } from '@hit/ui-kit/components/UserAvatar';
@@ -98,6 +98,16 @@ export function EmployeeDetail({ id, onNavigate }) {
     const [effectivePerms, setEffectivePerms] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    // LDD (Location/Division/Department) state
+    const [orgAssignment, setOrgAssignment] = useState(null);
+    const [divisions, setDivisions] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [orgLocations, setOrgLocations] = useState([]);
+    const [editingLdd, setEditingLdd] = useState(false);
+    const [savingLdd, setSavingLdd] = useState(false);
+    const [selectedDivisionId, setSelectedDivisionId] = useState('');
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+    const [selectedLocationId, setSelectedLocationId] = useState('');
     // Photo upload state
     const [uploadingPhoto, setUploadingPhoto] = useState(false);
     const [photoError, setPhotoError] = useState(null);
@@ -219,6 +229,73 @@ export function EmployeeDetail({ id, onNavigate }) {
             photoUrl: profilePictureUrl || authUser?.profile_picture_url,
         }, `${displayName.replace(/\s+/g, '_')}.vcf`);
     }, [employee, profilePictureUrl, authUser?.profile_picture_url]);
+    // Handle LDD save
+    const handleSaveLdd = useCallback(async () => {
+        if (!employee)
+            return;
+        // Must have at least one selection
+        if (!selectedDivisionId && !selectedDepartmentId && !selectedLocationId) {
+            setEditingLdd(false);
+            return;
+        }
+        try {
+            setSavingLdd(true);
+            const token = getStoredToken();
+            if (!token)
+                throw new Error('You must be signed in');
+            const body = {
+                userKey: employee.userEmail,
+                divisionId: selectedDivisionId || null,
+                departmentId: selectedDepartmentId || null,
+                locationId: selectedLocationId || null,
+            };
+            let response;
+            if (orgAssignment?.id) {
+                // Update existing
+                response = await fetch(`/api/org/assignments/${orgAssignment.id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(body),
+                });
+            }
+            else {
+                // Create new
+                response = await fetch('/api/org/assignments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(body),
+                });
+            }
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(data?.error || data?.detail || 'Failed to save organization assignment');
+            }
+            // Update local state
+            setOrgAssignment({
+                id: data.id || orgAssignment?.id || '',
+                userKey: employee.userEmail,
+                divisionId: selectedDivisionId || null,
+                departmentId: selectedDepartmentId || null,
+                locationId: selectedLocationId || null,
+                division: divisions.find(d => d.id === selectedDivisionId) || null,
+                department: departments.find(d => d.id === selectedDepartmentId) || null,
+                location: orgLocations.find(d => d.id === selectedLocationId) || null,
+            });
+            setEditingLdd(false);
+        }
+        catch (e) {
+            setError(e?.message || 'Failed to save LDD');
+        }
+        finally {
+            setSavingLdd(false);
+        }
+    }, [employee, orgAssignment, selectedDivisionId, selectedDepartmentId, selectedLocationId, divisions, departments, orgLocations]);
     const fetchData = useCallback(async () => {
         try {
             setLoading(true);
@@ -271,6 +348,40 @@ export function EmployeeDetail({ id, onNavigate }) {
             if (permsRes.ok) {
                 const perms = await permsRes.json();
                 setEffectivePerms(perms);
+            }
+            // Fetch org assignment (LDD)
+            const assignmentRes = await fetch(`/api/org/assignments?userKey=${encodeURIComponent(emp.userEmail)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+                credentials: 'include',
+            });
+            if (assignmentRes.ok) {
+                const assignmentData = await assignmentRes.json();
+                const items = assignmentData?.items || [];
+                if (items.length > 0) {
+                    const assignment = items[0];
+                    setOrgAssignment(assignment);
+                    setSelectedDivisionId(assignment.divisionId || '');
+                    setSelectedDepartmentId(assignment.departmentId || '');
+                    setSelectedLocationId(assignment.locationId || '');
+                }
+            }
+            // Fetch org options for editing
+            const [divisionsRes, departmentsRes, locationsRes] = await Promise.all([
+                fetch('/api/org/divisions', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' }),
+                fetch('/api/org/departments', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' }),
+                fetch('/api/org/locations', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' }),
+            ]);
+            if (divisionsRes.ok) {
+                const data = await divisionsRes.json();
+                setDivisions((data?.items || data || []).filter((d) => d?.isActive !== false));
+            }
+            if (departmentsRes.ok) {
+                const data = await departmentsRes.json();
+                setDepartments((data?.items || data || []).filter((d) => d?.isActive !== false));
+            }
+            if (locationsRes.ok) {
+                const data = await locationsRes.json();
+                setOrgLocations((data?.items || data || []).filter((d) => d?.isActive !== false));
             }
         }
         catch (e) {
@@ -333,6 +444,35 @@ export function EmployeeDetail({ id, onNavigate }) {
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                            }, title: "Remove photo", children: _jsx(Trash2, { size: 14 }) }))] }), _jsx("input", { ref: fileInputRef, type: "file", accept: "image/*", onChange: handlePhotoSelect, style: { display: 'none' } })] }), _jsxs("div", { style: { flex: 1 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }, children: [_jsx(Text, { size: "2xl", weight: "bold", children: displayName }), isActive ? (_jsx(Badge, { variant: "success", children: "Active" })) : (_jsx(Badge, { variant: "default", children: "Inactive" }))] }), _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4, opacity: 0.8 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Mail, { size: 14 }), _jsx(Text, { size: "base", children: employee.userEmail })] }), employee.phone && (_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Phone, { size: 14 }), _jsx(Text, { size: "base", children: employee.phone })] }))] }), _jsxs("div", { style: { display: 'flex', gap: 24, marginTop: 16 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "First Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.firstName })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.lastName })] }), employee.preferredName && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Preferred Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.preferredName })] }))] })] })] }) }), (employee.phone || employee.address1 || employee.city) && (_jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(MapPin, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Contact Information" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [employee.phone && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Phone" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Phone, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: employee.phone })] })] })), (employee.address1 || employee.city) && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Address" }), _jsxs("div", { style: { marginTop: 4 }, children: [employee.address1 && _jsx(Text, { size: "base", children: employee.address1 }), employee.address2 && _jsx(Text, { size: "base", children: employee.address2 }), (employee.city || employee.state || employee.postalCode) && (_jsxs(Text, { size: "base", children: [[employee.city, employee.state].filter(Boolean).join(', '), employee.postalCode && ` ${employee.postalCode}`] })), employee.country && _jsx(Text, { size: "base", children: employee.country })] })] }))] })] })), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Shield, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Access & Security" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Role" }), _jsx("div", { style: { marginTop: 4 }, children: _jsx(Badge, { variant: roleName === 'admin' ? 'warning' : 'default', children: roleName }) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Security Groups" }), _jsx("div", { style: { marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }, children: groups.length > 0 ? (groups.map((g) => (_jsx(Badge, { variant: "default", children: g.name }, g.id)))) : (_jsx(Text, { size: "sm", color: "secondary", style: { fontStyle: 'italic' }, children: "No groups" })) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Login" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Clock, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: formatRelativeTime(authLastLogin) })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Is Admin" }), _jsx("div", { style: { marginTop: 4 }, children: effectivePerms?.is_admin ? (_jsx(Badge, { variant: "warning", children: "Yes" })) : (_jsx(Badge, { variant: "default", children: "No" })) })] })] })] }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Calendar, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Timeline" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Auth Account Created" }), _jsx(Text, { size: "base", children: formatDate(authCreatedAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Created" }), _jsx(Text, { size: "base", children: formatDate(employee.createdAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Updated" }), _jsx(Text, { size: "base", children: formatDate(employee.updatedAt) })] })] })] })] }));
+                                            }, title: "Remove photo", children: _jsx(Trash2, { size: 14 }) }))] }), _jsx("input", { ref: fileInputRef, type: "file", accept: "image/*", onChange: handlePhotoSelect, style: { display: 'none' } })] }), _jsxs("div", { style: { flex: 1 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }, children: [_jsx(Text, { size: "2xl", weight: "bold", children: displayName }), isActive ? (_jsx(Badge, { variant: "success", children: "Active" })) : (_jsx(Badge, { variant: "default", children: "Inactive" }))] }), _jsxs("div", { style: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4, opacity: 0.8 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Mail, { size: 14 }), _jsx(Text, { size: "base", children: employee.userEmail })] }), employee.phone && (_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Phone, { size: 14 }), _jsx(Text, { size: "base", children: employee.phone })] }))] }), _jsxs("div", { style: { display: 'flex', gap: 24, marginTop: 16 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "First Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.firstName })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.lastName })] }), employee.preferredName && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Preferred Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.preferredName })] }))] })] })] }) }), (employee.phone || employee.address1 || employee.city) && (_jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(MapPin, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Contact Information" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [employee.phone && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Phone" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Phone, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: employee.phone })] })] })), (employee.address1 || employee.city) && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Address" }), _jsxs("div", { style: { marginTop: 4 }, children: [employee.address1 && _jsx(Text, { size: "base", children: employee.address1 }), employee.address2 && _jsx(Text, { size: "base", children: employee.address2 }), (employee.city || employee.state || employee.postalCode) && (_jsxs(Text, { size: "base", children: [[employee.city, employee.state].filter(Boolean).join(', '), employee.postalCode && ` ${employee.postalCode}`] })), employee.country && _jsx(Text, { size: "base", children: employee.country })] })] }))] })] })), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8 }, children: [_jsx(Building2, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Organization" })] }), !editingLdd ? (_jsxs(Button, { variant: "secondary", size: "sm", onClick: () => setEditingLdd(true), children: [_jsx(Edit2, { size: 14, style: { marginRight: 4 } }), "Edit"] })) : (_jsxs("div", { style: { display: 'flex', gap: 8 }, children: [_jsx(Button, { variant: "secondary", size: "sm", onClick: () => {
+                                            setEditingLdd(false);
+                                            setSelectedDivisionId(orgAssignment?.divisionId || '');
+                                            setSelectedDepartmentId(orgAssignment?.departmentId || '');
+                                            setSelectedLocationId(orgAssignment?.locationId || '');
+                                        }, children: "Cancel" }), _jsx(Button, { variant: "primary", size: "sm", onClick: handleSaveLdd, disabled: savingLdd, children: savingLdd ? 'Saving...' : 'Save' })] }))] }), editingLdd ? (_jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", style: { marginBottom: 4 }, children: "Division" }), _jsxs("select", { value: selectedDivisionId, onChange: (e) => setSelectedDivisionId(e.target.value), style: {
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            borderRadius: 6,
+                                            border: '1px solid var(--color-border, #374151)',
+                                            backgroundColor: 'var(--color-bg-input, #1f2937)',
+                                            color: 'inherit',
+                                            fontSize: '14px',
+                                        }, children: [_jsx("option", { value: "", children: "-- None --" }), divisions.map((d) => (_jsx("option", { value: d.id, children: d.name }, d.id)))] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", style: { marginBottom: 4 }, children: "Department" }), _jsxs("select", { value: selectedDepartmentId, onChange: (e) => setSelectedDepartmentId(e.target.value), style: {
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            borderRadius: 6,
+                                            border: '1px solid var(--color-border, #374151)',
+                                            backgroundColor: 'var(--color-bg-input, #1f2937)',
+                                            color: 'inherit',
+                                            fontSize: '14px',
+                                        }, children: [_jsx("option", { value: "", children: "-- None --" }), departments.map((d) => (_jsx("option", { value: d.id, children: d.name }, d.id)))] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", style: { marginBottom: 4 }, children: "Location" }), _jsxs("select", { value: selectedLocationId, onChange: (e) => setSelectedLocationId(e.target.value), style: {
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            borderRadius: 6,
+                                            border: '1px solid var(--color-border, #374151)',
+                                            backgroundColor: 'var(--color-bg-input, #1f2937)',
+                                            color: 'inherit',
+                                            fontSize: '14px',
+                                        }, children: [_jsx("option", { value: "", children: "-- None --" }), orgLocations.map((d) => (_jsx("option", { value: d.id, children: d.name }, d.id)))] })] })] })) : (_jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Division" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Briefcase, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: orgAssignment?.division?.name || divisions.find(d => d.id === orgAssignment?.divisionId)?.name || '—' })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Department" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Users, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: orgAssignment?.department?.name || departments.find(d => d.id === orgAssignment?.departmentId)?.name || '—' })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Location" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(MapPinned, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: orgAssignment?.location?.name || orgLocations.find(d => d.id === orgAssignment?.locationId)?.name || '—' })] })] })] }))] }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Shield, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Access & Security" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Role" }), _jsx("div", { style: { marginTop: 4 }, children: _jsx(Badge, { variant: roleName === 'admin' ? 'warning' : 'default', children: roleName }) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Security Groups" }), _jsx("div", { style: { marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }, children: groups.length > 0 ? (groups.map((g) => (_jsx(Badge, { variant: "default", children: g.name }, g.id)))) : (_jsx(Text, { size: "sm", color: "secondary", style: { fontStyle: 'italic' }, children: "No groups" })) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Login" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Clock, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: formatRelativeTime(authLastLogin) })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Is Admin" }), _jsx("div", { style: { marginTop: 4 }, children: effectivePerms?.is_admin ? (_jsx(Badge, { variant: "warning", children: "Yes" })) : (_jsx(Badge, { variant: "default", children: "No" })) })] })] })] }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Calendar, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Timeline" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Auth Account Created" }), _jsx(Text, { size: "base", children: formatDate(authCreatedAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Created" }), _jsx(Text, { size: "base", children: formatDate(employee.createdAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Updated" }), _jsx(Text, { size: "base", children: formatDate(employee.updatedAt) })] })] })] })] }));
 }
 export default EmployeeDetail;
