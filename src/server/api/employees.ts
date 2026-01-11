@@ -4,7 +4,7 @@ import { and, asc, desc, like, or, sql, type AnyColumn } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees } from '@/lib/feature-pack-schemas';
 import { requireAdmin } from '../auth';
-import { ensureEmployeesExistForEmails, getAuthUrl, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
+import { ensureEmployeesExistForEmails, getAuthUrlFromRequest, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (bearer) headers['Authorization'] = bearer;
 
-    const authUrl = getAuthUrl();
+    const authUrl = getAuthUrlFromRequest(request);
     provisionMeta.authUrl = authUrl;
     const res = await fetch(`${authUrl}/directory/users`, {
       method: 'GET',

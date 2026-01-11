@@ -24,11 +24,13 @@ export function deriveEmployeeNamesFromEmail(email) {
     }
     return { firstName: 'Employee', lastName: 'User' };
 }
-export function getAuthUrl() {
+export function getAuthUrlFromRequest(request) {
     // Always prefer the app-owned auth proxy.
     // It forwards Authorization/cookies AND attaches X-HIT-Service-Token (required by modules in many deployments).
-    // Using direct module URLs (NEXT_PUBLIC_HIT_AUTH_URL) from server-side pack code can bypass that and cause 401s.
-    return '/api/proxy/auth';
+    //
+    // IMPORTANT: server-side fetch() requires an absolute URL.
+    const origin = new URL(request.url).origin;
+    return `${origin}/api/proxy/auth`;
 }
 export function getForwardedBearerFromRequest(request) {
     const rawTokenHeader = request.headers.get('x-hit-token-raw') || request.headers.get('X-HIT-Token-Raw');
