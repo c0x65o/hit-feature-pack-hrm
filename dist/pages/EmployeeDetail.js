@@ -56,19 +56,47 @@ function formatDate(dateStr) {
         return 'Unknown';
     }
 }
+function normalizeAuthUser(raw) {
+    if (!raw)
+        return null;
+    const u = raw?.user && typeof raw.user === 'object' ? raw.user : raw;
+    const email = String(u?.email || '').trim();
+    if (!email)
+        return null;
+    const createdAt = String(u?.created_at || u?.createdAt || '').trim() || undefined;
+    const lastLoginRaw = u?.last_login === null || u?.last_login === undefined
+        ? u?.lastLogin
+        : u?.last_login;
+    const lastLogin = lastLoginRaw === null || lastLoginRaw === undefined ? null : String(lastLoginRaw).trim() || null;
+    return {
+        ...u,
+        email,
+        created_at: createdAt,
+        createdAt,
+        last_login: lastLogin,
+        lastLogin,
+    };
+}
+function mostRecentIso(dates) {
+    let best = null;
+    for (const d of dates) {
+        if (!d)
+            continue;
+        const t = new Date(d).getTime();
+        if (!Number.isFinite(t))
+            continue;
+        if (best === null || t > best)
+            best = t;
+    }
+    return best === null ? null : new Date(best).toISOString();
+}
 export function EmployeeDetail({ id, onNavigate }) {
-    const { Page, Card, Button, Badge, Spinner, Alert, Input, Modal } = useUi();
+    const { Page, Card, Button, Badge, Spinner, Alert } = useUi();
     const [employee, setEmployee] = useState(null);
     const [authUser, setAuthUser] = useState(null);
     const [effectivePerms, setEffectivePerms] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    // Edit state
-    const [editOpen, setEditOpen] = useState(false);
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [preferredName, setPreferredName] = useState('');
-    const [saving, setSaving] = useState(false);
     const navigate = (path) => {
         if (onNavigate)
             onNavigate(path);
@@ -94,13 +122,30 @@ export function EmployeeDetail({ id, onNavigate }) {
             const emp = await empRes.json();
             setEmployee(emp);
             // Fetch auth user info
-            const authRes = await fetch(`/api/proxy/auth/admin/users/${encodeURIComponent(emp.userEmail)}`, {
+            const authRes = await fetch(`/api/proxy/auth/users/${encodeURIComponent(emp.userEmail)}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 credentials: 'include',
             });
             if (authRes.ok) {
-                const user = await authRes.json();
-                setAuthUser(user);
+                const userRaw = await authRes.json().catch(() => null);
+                const normalized = normalizeAuthUser(userRaw);
+                setAuthUser(normalized);
+                // Fallback: if auth doesn't provide last_login, infer from sessions.
+                const lastLoginCandidate = String(normalized?.last_login || normalized?.lastLogin || '').trim();
+                if (!lastLoginCandidate) {
+                    const sessionsRes = await fetch(`/api/proxy/auth/admin/users/${encodeURIComponent(emp.userEmail)}/sessions?limit=20&offset=0`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                        credentials: 'include',
+                    });
+                    if (sessionsRes.ok) {
+                        const s = await sessionsRes.json().catch(() => null);
+                        const sessions = Array.isArray(s?.sessions) ? s.sessions : Array.isArray(s) ? s : [];
+                        const inferred = mostRecentIso(sessions.map((x) => String(x?.created_at || x?.createdAt || x?.createdOnTimestamp || x?.created_on || '').trim() || null));
+                        if (inferred) {
+                            setAuthUser((prev) => (prev ? { ...prev, last_login: inferred } : prev));
+                        }
+                    }
+                }
             }
             // Fetch effective permissions (includes groups, role)
             const permsRes = await fetch(`/api/proxy/auth/admin/permissions/users/${encodeURIComponent(emp.userEmail)}/effective`, {
@@ -122,46 +167,6 @@ export function EmployeeDetail({ id, onNavigate }) {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
-    const openEdit = () => {
-        if (!employee)
-            return;
-        setFirstName(employee.firstName || '');
-        setLastName(employee.lastName || '');
-        setPreferredName(employee.preferredName || '');
-        setEditOpen(true);
-    };
-    const handleSave = async () => {
-        if (!employee)
-            return;
-        try {
-            setSaving(true);
-            setError(null);
-            const token = getStoredToken();
-            if (!token)
-                throw new Error('You must be signed in.');
-            const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employee.id)}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                credentials: 'include',
-                body: JSON.stringify({
-                    firstName,
-                    lastName,
-                    preferredName: preferredName || null,
-                }),
-            });
-            const json = await res.json().catch(() => ({}));
-            if (!res.ok)
-                throw new Error(json?.error || json?.detail || 'Failed to update employee');
-            setEditOpen(false);
-            await fetchData();
-        }
-        catch (e) {
-            setError(e?.message || 'Failed to update employee');
-        }
-        finally {
-            setSaving(false);
-        }
-    };
     if (loading) {
         return (_jsx("div", { style: { display: 'flex', justifyContent: 'center', padding: 48 }, children: _jsx(Spinner, {}) }));
     }
@@ -174,11 +179,14 @@ export function EmployeeDetail({ id, onNavigate }) {
     const displayName = employee.preferredName?.trim() || `${employee.firstName} ${employee.lastName}`.trim();
     const roleName = effectivePerms?.role || authUser?.role || (authUser?.roles?.[0]) || 'user';
     const groups = effectivePerms?.groups || [];
+    const isActive = employee.isActive !== false;
+    const authCreatedAt = String(authUser?.created_at || authUser?.createdAt || '').trim() || null;
+    const authLastLogin = String(authUser?.last_login || authUser?.lastLogin || '').trim() || null;
     const breadcrumbs = [
-        { label: 'HRM', href: '/hrm/employees', icon: _jsx(Users, { size: 14 }) },
+        { label: 'HRM', icon: _jsx(Users, { size: 14 }) },
         { label: 'Employees', href: '/hrm/employees', icon: _jsx(User, { size: 14 }) },
         { label: displayName },
     ];
-    return (_jsxs(Page, { title: displayName, breadcrumbs: breadcrumbs, onNavigate: navigate, actions: _jsxs("div", { style: { display: 'flex', gap: 8 }, children: [_jsxs(Button, { variant: "secondary", onClick: () => navigate('/hrm/employees'), children: [_jsx(ArrowLeft, { size: 16, style: { marginRight: 4 } }), "Back"] }), _jsxs(Button, { variant: "primary", onClick: openEdit, children: [_jsx(Edit2, { size: 16, style: { marginRight: 4 } }), "Edit"] })] }), children: [error && (_jsx(Alert, { variant: "error", title: "Error", style: { marginBottom: 16 }, children: error })), _jsx(Card, { children: _jsxs("div", { style: { display: 'flex', gap: 24, alignItems: 'flex-start' }, children: [_jsx("div", { style: { position: 'relative' }, children: _jsx(UserAvatar, { email: employee.userEmail, name: displayName, src: authUser?.profile_picture_url || undefined, size: "lg" }) }), _jsxs("div", { style: { flex: 1 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }, children: [_jsx(Text, { size: "2xl", weight: "bold", children: displayName }), employee.isActive ? (_jsx(Badge, { variant: "success", children: "Active" })) : (_jsx(Badge, { variant: "default", children: "Inactive" }))] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, opacity: 0.8 }, children: [_jsx(Mail, { size: 14 }), _jsx(Text, { size: "base", children: employee.userEmail })] }), _jsxs("div", { style: { display: 'flex', gap: 24, marginTop: 16 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "First Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.firstName })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.lastName })] }), employee.preferredName && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Preferred Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.preferredName })] }))] })] })] }) }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Shield, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Access & Security" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Role" }), _jsx("div", { style: { marginTop: 4 }, children: _jsx(Badge, { variant: roleName === 'admin' ? 'warning' : 'default', children: roleName }) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Security Groups" }), _jsx("div", { style: { marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }, children: groups.length > 0 ? (groups.map((g) => (_jsx(Badge, { variant: "default", children: g.name }, g.id)))) : (_jsx(Text, { size: "sm", color: "secondary", style: { fontStyle: 'italic' }, children: "No groups" })) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Login" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Clock, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: formatRelativeTime(authUser?.last_login) })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Is Admin" }), _jsx("div", { style: { marginTop: 4 }, children: effectivePerms?.is_admin ? (_jsx(Badge, { variant: "warning", children: "Yes" })) : (_jsx(Badge, { variant: "default", children: "No" })) })] })] })] }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Calendar, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Timeline" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Auth Account Created" }), _jsx(Text, { size: "base", children: formatDate(authUser?.created_at) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Created" }), _jsx(Text, { size: "base", children: formatDate(employee.createdAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Updated" }), _jsx(Text, { size: "base", children: formatDate(employee.updatedAt) })] })] })] }), editOpen && (_jsx(Modal, { open: true, onClose: () => setEditOpen(false), title: "Edit Employee", children: _jsxs("div", { style: { padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }, children: [_jsx(Input, { label: "Email", value: employee.userEmail, disabled: true }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }, children: [_jsx(Input, { label: "First Name", value: firstName, onChange: (e) => setFirstName(e.target.value) }), _jsx(Input, { label: "Last Name", value: lastName, onChange: (e) => setLastName(e.target.value) })] }), _jsx(Input, { label: "Preferred Name (optional)", value: preferredName, onChange: (e) => setPreferredName(e.target.value) }), _jsxs("div", { style: { display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }, children: [_jsx(Button, { variant: "secondary", onClick: () => setEditOpen(false), children: "Cancel" }), _jsx(Button, { variant: "primary", onClick: handleSave, disabled: saving, children: saving ? 'Saving…' : 'Save' })] })] }) }))] }));
+    return (_jsxs(Page, { title: displayName, breadcrumbs: breadcrumbs, onNavigate: navigate, actions: _jsxs("div", { style: { display: 'flex', gap: 8 }, children: [_jsxs(Button, { variant: "secondary", onClick: () => navigate('/hrm/employees'), children: [_jsx(ArrowLeft, { size: 16, style: { marginRight: 4 } }), "Back"] }), _jsxs(Button, { variant: "primary", onClick: () => navigate(`/hrm/employees/${encodeURIComponent(employee.id)}/edit`), children: [_jsx(Edit2, { size: 16, style: { marginRight: 4 } }), "Edit"] })] }), children: [error && (_jsx(Alert, { variant: "error", title: "Error", style: { marginBottom: 16 }, children: error })), _jsx(Card, { children: _jsxs("div", { style: { display: 'flex', gap: 24, alignItems: 'flex-start' }, children: [_jsx("div", { style: { position: 'relative' }, children: _jsx(UserAvatar, { email: employee.userEmail, name: displayName, src: authUser?.profile_picture_url || undefined, size: "lg" }) }), _jsxs("div", { style: { flex: 1 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }, children: [_jsx(Text, { size: "2xl", weight: "bold", children: displayName }), isActive ? (_jsx(Badge, { variant: "success", children: "Active" })) : (_jsx(Badge, { variant: "default", children: "Inactive" }))] }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, opacity: 0.8 }, children: [_jsx(Mail, { size: 14 }), _jsx(Text, { size: "base", children: employee.userEmail })] }), _jsxs("div", { style: { display: 'flex', gap: 24, marginTop: 16 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "First Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.firstName })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.lastName })] }), employee.preferredName && (_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Preferred Name" }), _jsx(Text, { size: "base", weight: "medium", children: employee.preferredName })] }))] })] })] }) }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Shield, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Access & Security" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Role" }), _jsx("div", { style: { marginTop: 4 }, children: _jsx(Badge, { variant: roleName === 'admin' ? 'warning' : 'default', children: roleName }) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Security Groups" }), _jsx("div", { style: { marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }, children: groups.length > 0 ? (groups.map((g) => (_jsx(Badge, { variant: "default", children: g.name }, g.id)))) : (_jsx(Text, { size: "sm", color: "secondary", style: { fontStyle: 'italic' }, children: "No groups" })) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Last Login" }), _jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }, children: [_jsx(Clock, { size: 14, style: { opacity: 0.6 } }), _jsx(Text, { size: "base", children: formatRelativeTime(authLastLogin) })] })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Is Admin" }), _jsx("div", { style: { marginTop: 4 }, children: effectivePerms?.is_admin ? (_jsx(Badge, { variant: "warning", children: "Yes" })) : (_jsx(Badge, { variant: "default", children: "No" })) })] })] })] }), _jsxs(Card, { style: { marginTop: 16 }, children: [_jsxs("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }, children: [_jsx(Calendar, { size: 18 }), _jsx(Text, { size: "lg", weight: "semibold", children: "Timeline" })] }), _jsxs("div", { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }, children: [_jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "Auth Account Created" }), _jsx(Text, { size: "base", children: formatDate(authCreatedAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Created" }), _jsx(Text, { size: "base", children: formatDate(employee.createdAt) })] }), _jsxs("div", { children: [_jsx(Text, { size: "sm", color: "secondary", children: "HRM Record Updated" }), _jsx(Text, { size: "base", children: formatDate(employee.updatedAt) })] })] })] })] }));
 }
 export default EmployeeDetail;

@@ -44,6 +44,7 @@ export async function GET(request) {
             firstName: derived.firstName,
             lastName: derived.lastName,
             preferredName: null,
+            isActive: true,
         })
             .onConflictDoNothing({ target: employees.userEmail })
             .returning();
@@ -96,6 +97,7 @@ export async function PUT(request) {
             firstName,
             lastName,
             preferredName,
+            isActive: true,
         })
             .returning();
         const employee = inserted[0] ?? null;

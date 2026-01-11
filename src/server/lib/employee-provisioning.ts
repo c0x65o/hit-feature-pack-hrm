@@ -83,6 +83,7 @@ export async function ensureEmployeesExistForEmails(params: {
       firstName: derived.firstName,
       lastName: derived.lastName,
       preferredName: null,
+      isActive: true,
     };
   });
 

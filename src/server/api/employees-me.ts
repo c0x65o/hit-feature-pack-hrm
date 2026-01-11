@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
         firstName: derived.firstName,
         lastName: derived.lastName,
         preferredName: null,
+        isActive: true,
       })
       .onConflictDoNothing({ target: employees.userEmail })
       .returning();
@@ -107,6 +108,7 @@ export async function PUT(request: NextRequest) {
         firstName,
         lastName,
         preferredName,
+        isActive: true,
       })
       .returning();
 

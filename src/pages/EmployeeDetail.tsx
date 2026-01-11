@@ -7,20 +7,13 @@ import {
   User,
   Users,
   Clock,
-  Camera,
   Mail,
   Calendar,
-  Upload,
   Edit2,
-  Save,
-  X,
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@hit/ui-kit';
 import { useUi } from '@hit/ui-kit';
 import { UserAvatar } from '@hit/ui-kit/components/UserAvatar';
-import { Box } from '@hit/ui-kit/components/Box';
-import { Row } from '@hit/ui-kit/components/Row';
-import { Stack } from '@hit/ui-kit/components/Stack';
 import { Text } from '@hit/ui-kit/components/Text';
 
 interface EmployeeDetailProps {
@@ -34,7 +27,7 @@ interface Employee {
   firstName: string;
   lastName: string;
   preferredName: string | null;
-  isActive: boolean;
+  isActive?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,14 +38,10 @@ interface AuthUser {
   roles?: string[];
   last_login?: string | null;
   created_at?: string;
+  createdAt?: string;
+  lastLogin?: string | null;
   profile_picture_url?: string | null;
   profile_fields?: Record<string, unknown> | null;
-}
-
-interface UserGroup {
-  id: string;
-  name: string;
-  description?: string | null;
 }
 
 interface EffectivePermissions {
@@ -106,21 +95,48 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+function normalizeAuthUser(raw: any): AuthUser | null {
+  if (!raw) return null;
+  const u = raw?.user && typeof raw.user === 'object' ? raw.user : raw;
+  const email = String(u?.email || '').trim();
+  if (!email) return null;
+
+  const createdAt = String(u?.created_at || u?.createdAt || '').trim() || undefined;
+  const lastLoginRaw =
+    u?.last_login === null || u?.last_login === undefined
+      ? u?.lastLogin
+      : u?.last_login;
+  const lastLogin = lastLoginRaw === null || lastLoginRaw === undefined ? null : String(lastLoginRaw).trim() || null;
+
+  return {
+    ...u,
+    email,
+    created_at: createdAt,
+    createdAt,
+    last_login: lastLogin,
+    lastLogin,
+  } as AuthUser;
+}
+
+function mostRecentIso(dates: Array<string | null | undefined>): string | null {
+  let best: number | null = null;
+  for (const d of dates) {
+    if (!d) continue;
+    const t = new Date(d).getTime();
+    if (!Number.isFinite(t)) continue;
+    if (best === null || t > best) best = t;
+  }
+  return best === null ? null : new Date(best).toISOString();
+}
+
 export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
-  const { Page, Card, Button, Badge, Spinner, Alert, Input, Modal } = useUi();
+  const { Page, Card, Button, Badge, Spinner, Alert } = useUi();
 
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [effectivePerms, setEffectivePerms] = useState<EffectivePermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Edit state
-  const [editOpen, setEditOpen] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [preferredName, setPreferredName] = useState('');
-  const [saving, setSaving] = useState(false);
 
   const navigate = (path: string) => {
     if (onNavigate) onNavigate(path);
@@ -147,13 +163,38 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
       setEmployee(emp);
 
       // Fetch auth user info
-      const authRes = await fetch(`/api/proxy/auth/admin/users/${encodeURIComponent(emp.userEmail)}`, {
+      const authRes = await fetch(`/api/proxy/auth/users/${encodeURIComponent(emp.userEmail)}`, {
         headers: { Authorization: `Bearer ${token}` },
         credentials: 'include',
       });
       if (authRes.ok) {
-        const user = await authRes.json();
-        setAuthUser(user);
+        const userRaw = await authRes.json().catch(() => null);
+        const normalized = normalizeAuthUser(userRaw);
+        setAuthUser(normalized);
+
+        // Fallback: if auth doesn't provide last_login, infer from sessions.
+        const lastLoginCandidate = String((normalized as any)?.last_login || (normalized as any)?.lastLogin || '').trim();
+        if (!lastLoginCandidate) {
+          const sessionsRes = await fetch(
+            `/api/proxy/auth/admin/users/${encodeURIComponent(emp.userEmail)}/sessions?limit=20&offset=0`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+              credentials: 'include',
+            }
+          );
+          if (sessionsRes.ok) {
+            const s = await sessionsRes.json().catch(() => null);
+            const sessions = Array.isArray(s?.sessions) ? s.sessions : Array.isArray(s) ? s : [];
+            const inferred = mostRecentIso(
+              sessions.map((x: any) =>
+                String(x?.created_at || x?.createdAt || x?.createdOnTimestamp || x?.created_on || '').trim() || null
+              )
+            );
+            if (inferred) {
+              setAuthUser((prev: AuthUser | null) => (prev ? { ...prev, last_login: inferred } : prev));
+            }
+          }
+        }
       }
 
       // Fetch effective permissions (includes groups, role)
@@ -178,44 +219,6 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const openEdit = () => {
-    if (!employee) return;
-    setFirstName(employee.firstName || '');
-    setLastName(employee.lastName || '');
-    setPreferredName(employee.preferredName || '');
-    setEditOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!employee) return;
-    try {
-      setSaving(true);
-      setError(null);
-      const token = getStoredToken();
-      if (!token) throw new Error('You must be signed in.');
-
-      const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employee.id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        credentials: 'include',
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          preferredName: preferredName || null,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to update employee');
-
-      setEditOpen(false);
-      await fetchData();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to update employee');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -244,9 +247,12 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
   const displayName = employee.preferredName?.trim() || `${employee.firstName} ${employee.lastName}`.trim();
   const roleName = effectivePerms?.role || authUser?.role || (authUser?.roles?.[0]) || 'user';
   const groups = effectivePerms?.groups || [];
+  const isActive = employee.isActive !== false;
+  const authCreatedAt = String((authUser as any)?.created_at || (authUser as any)?.createdAt || '').trim() || null;
+  const authLastLogin = String((authUser as any)?.last_login || (authUser as any)?.lastLogin || '').trim() || null;
 
   const breadcrumbs: BreadcrumbItem[] = [
-    { label: 'HRM', href: '/hrm/employees', icon: <Users size={14} /> },
+    { label: 'HRM', icon: <Users size={14} /> },
     { label: 'Employees', href: '/hrm/employees', icon: <User size={14} /> },
     { label: displayName },
   ];
@@ -262,7 +268,7 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
             <ArrowLeft size={16} style={{ marginRight: 4 }} />
             Back
           </Button>
-          <Button variant="primary" onClick={openEdit}>
+          <Button variant="primary" onClick={() => navigate(`/hrm/employees/${encodeURIComponent(employee.id)}/edit`)}>
             <Edit2 size={16} style={{ marginRight: 4 }} />
             Edit
           </Button>
@@ -293,7 +299,7 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
               <Text size="2xl" weight="bold">{displayName}</Text>
-              {employee.isActive ? (
+              {isActive ? (
                 <Badge variant="success">Active</Badge>
               ) : (
                 <Badge variant="default">Inactive</Badge>
@@ -346,7 +352,7 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
             <Text size="sm" color="secondary">Security Groups</Text>
             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {groups.length > 0 ? (
-                groups.map((g) => (
+                groups.map((g: { id: string; name: string; description: string | null }) => (
                   <Badge key={g.id} variant="default">{g.name}</Badge>
                 ))
               ) : (
@@ -359,7 +365,7 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
             <Text size="sm" color="secondary">Last Login</Text>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <Clock size={14} style={{ opacity: 0.6 }} />
-              <Text size="base">{formatRelativeTime(authUser?.last_login)}</Text>
+              <Text size="base">{formatRelativeTime(authLastLogin)}</Text>
             </div>
           </div>
 
@@ -386,7 +392,7 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
           <div>
             <Text size="sm" color="secondary">Auth Account Created</Text>
-            <Text size="base">{formatDate(authUser?.created_at)}</Text>
+            <Text size="base">{formatDate(authCreatedAt)}</Text>
           </div>
           <div>
             <Text size="sm" color="secondary">HRM Record Created</Text>
@@ -410,39 +416,6 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
       </Card>
       */}
 
-      {/* Edit Modal */}
-      {editOpen && (
-        <Modal open={true} onClose={() => setEditOpen(false)} title="Edit Employee">
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Input label="Email" value={employee.userEmail} disabled />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input
-                label="First Name"
-                value={firstName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFirstName(e.target.value)}
-              />
-              <Input
-                label="Last Name"
-                value={lastName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLastName(e.target.value)}
-              />
-            </div>
-            <Input
-              label="Preferred Name (optional)"
-              value={preferredName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPreferredName(e.target.value)}
-            />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-              <Button variant="secondary" onClick={() => setEditOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </Page>
   );
 }

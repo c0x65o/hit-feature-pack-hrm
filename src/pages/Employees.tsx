@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Edit2 } from 'lucide-react';
 import { useUi } from '@hit/ui-kit';
 import { useServerDataTableState } from '@hit/ui-kit/hooks/useServerDataTableState';
 
@@ -37,7 +36,7 @@ function displayName(row: EmployeeRow): string {
 }
 
 export function Employees({ onNavigate }: EmployeesProps) {
-  const { Page, Card, Button, DataTable, Modal, Input, Alert, Spinner } = useUi();
+  const { Page, Card, DataTable, Alert, Spinner } = useUi();
 
   const serverTable = useServerDataTableState({
     tableId: 'hrm.employees',
@@ -49,15 +48,6 @@ export function Employees({ onNavigate }: EmployeesProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<{ items: EmployeeRow[]; pagination?: { total?: number } } | null>(null);
-
-  const [editOpen, setEditOpen] = useState(false);
-  const [selected, setSelected] = useState<EmployeeRow | null>(null);
-  const [mutating, setMutating] = useState(false);
-
-  // edit form
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [preferredName, setPreferredName] = useState('');
 
   const navigate = (path: string) => {
     if (onNavigate) onNavigate(path);
@@ -100,46 +90,6 @@ export function Employees({ onNavigate }: EmployeesProps) {
   const items = data?.items || [];
   const total = data?.pagination?.total;
 
-  const openEdit = (row: EmployeeRow) => {
-    setSelected(row);
-    setFirstName(row.firstName || '');
-    setLastName(row.lastName || '');
-    setPreferredName(row.preferredName || '');
-    setEditOpen(true);
-  };
-
-
-  const handleUpdate = async () => {
-    if (!selected) return;
-    try {
-      setMutating(true);
-      setError(null);
-      const token = getStoredToken();
-      if (!token) throw new Error('You must be signed in.');
-
-      const res = await fetch(`/api/hrm/employees/${encodeURIComponent(selected.id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        credentials: 'include',
-        body: JSON.stringify({
-          firstName,
-          lastName,
-          preferredName: preferredName || null,
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to update employee');
-
-      setEditOpen(false);
-      setSelected(null);
-      await fetchEmployees();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to update employee');
-    } finally {
-      setMutating(false);
-    }
-  };
-
   const columns = useMemo(() => {
     return [
       {
@@ -156,32 +106,13 @@ export function Employees({ onNavigate }: EmployeesProps) {
       { key: 'firstName', label: 'First', sortable: true },
       { key: 'lastName', label: 'Last', sortable: true },
       { key: 'preferredName', label: 'Preferred', sortable: true },
-      {
-        key: 'actions',
-        label: '',
-        align: 'right' as const,
-        render: (_: unknown, row: Record<string, unknown>) => (
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e: React.MouseEvent) => {
-                e.stopPropagation();
-                openEdit(row as any);
-              }}
-            >
-              <Edit2 size={16} />
-            </Button>
-          </div>
-        ),
-      },
     ];
   }, []);
 
   return (
     <Page
       title="Employees"
-      description="HRM employee directory (pre-1.0: identity + naming)"
+      description="HRM employee directory"
     >
       {error ? (
         <Alert variant="error" title="Error">
@@ -207,34 +138,6 @@ export function Employees({ onNavigate }: EmployeesProps) {
         />
       </Card>
 
-      {/* Edit */}
-      {editOpen && selected && (
-        <Modal open={true} onClose={() => setEditOpen(false)} title="Edit Employee">
-          <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <Input label="User email" value={selected.userEmail} disabled />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="First name" value={firstName} onChange={(e: any) => setFirstName(e.target.value)} />
-              <Input label="Last name" value={lastName} onChange={(e: any) => setLastName(e.target.value)} />
-            </div>
-            <Input label="Preferred name (optional)" value={preferredName} onChange={(e: any) => setPreferredName(e.target.value)} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setEditOpen(false);
-                  setSelected(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleUpdate} disabled={mutating}>
-                {mutating ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       {loading && !data ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
           <Spinner />
@@ -245,4 +148,3 @@ export function Employees({ onNavigate }: EmployeesProps) {
 }
 
 export default Employees;
-
