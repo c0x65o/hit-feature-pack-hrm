@@ -1,22 +1,89 @@
 {
   "name": "@hit/feature-pack-hrm",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A HIT feature pack",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./server/api/*": {
+      "development": "./src/server/api/*.ts",
+      "types": "./dist/server/api/*.d.ts",
+      "import": "./dist/server/api/*.js",
+      "require": "./dist/server/api/*.js",
+      "default": "./dist/server/api/*.js"
+    },
+    "./pages/*": {
+      "development": "./src/pages/*.tsx",
+      "types": "./dist/pages/*.d.ts",
+      "import": "./dist/pages/*.js",
+      "require": "./dist/pages/*.js",
+      "default": "./dist/pages/*.js"
+    },
+    "./schema": {
+      "development": "./src/schema/hrm.ts",
+      "types": "./dist/schema/hrm.d.ts",
+      "import": "./dist/schema/hrm.js",
+      "require": "./dist/schema/hrm.js",
+      "default": "./dist/schema/hrm.js"
+    },
+    "./schema/*": {
+      "development": "./src/schema/*.ts",
+      "types": "./dist/schema/*.d.ts",
+      "import": "./dist/schema/*.js",
+      "require": "./dist/schema/*.js",
+      "default": "./dist/schema/*.js"
+    }
+  },
   "files": [
     "dist",
+    "src",
+    "migrations",
     "feature-pack.yaml"
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "react": "^18.0.0"
+    "@hit/sdk": "*",
+    "@hit/ui-kit": "*",
+    "drizzle-orm": "^0.38.0",
+    "drizzle-zod": ">=0.7.0",
+    "next": "15.5.9",
+    "react": "19.2.3",
+    "zod": "^4.3.2"
+  },
+  "peerDependenciesMeta": {
+    "@hit/sdk": {
+      "optional": true
+    },
+    "@hit/ui-kit": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@hit/feature-pack-stubs": "file:../../packages/hit-feature-pack-stubs",
+    "@hit/sdk": "file:../../hit-sdks/hit-sdk-typescript",
+    "@hit/ui-kit": "file:../../packages/hit-ui-kit-ts",
+    "@types/node": "^20",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-orm": "^0.38.0",
+    "drizzle-zod": "^0.7.0",
+    "lucide-react": "^0.460.0",
+    "next": "^15.5.9",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "typescript": "^5.0.0",
+    "zod": "^4.3.2"
   }
 }

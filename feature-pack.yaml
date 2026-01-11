@@ -1,4 +1,62 @@
 name: hrm
-description: A HIT feature pack
-routes: []
-nav: []
+title: Human Resources
+description: HRM feature pack (employee directory + future payroll/benefits/performance)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SCHEMA - Drizzle ORM table definitions
+# ─────────────────────────────────────────────────────────────────────────────
+schema:
+  source: src/schema/hrm.ts
+  exports:
+    - employees
+    - Employee
+    - InsertEmployee
+    - UpdateEmployee
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API ROUTES
+# ─────────────────────────────────────────────────────────────────────────────
+api:
+  routes:
+    - path: /api/hrm/employees/me
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-hrm/server/api/employees-me"
+      description: "Get or upsert the current user's employee profile (name basics)."
+
+    - path: /api/hrm/directory/users
+      methods: [GET]
+      handler: "@hit/feature-pack-hrm/server/api/directory-users"
+      description: "User directory with display names enriched from HRM employees (fallbacks to auth profile_fields/email)."
+
+    - path: /api/hrm/employees
+      methods: [GET]
+      handler: "@hit/feature-pack-hrm/server/api/employees"
+      description: "Admin: list employees (employees are auto-provisioned from auth users)"
+
+    - path: /api/hrm/employees/[id]
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-hrm/server/api/employees-id"
+      description: "Admin: get/update an employee by id"
+
+# Routes (pre-1.0: start Employees UI)
+routes:
+  - path: /hrm/employees
+    page: Employees
+    roles: [admin]
+
+nav:
+  - id: hrm
+    label: HRM
+    icon: Users
+    group: main
+    weight: 50
+    roles: [admin]
+    showWhen: authenticated
+    children:
+      - id: hrm-employees
+        label: Employees
+        path: /hrm/employees
+        icon: IdCard
+        weight: 10
+        roles: [admin]
+        showWhen: authenticated
