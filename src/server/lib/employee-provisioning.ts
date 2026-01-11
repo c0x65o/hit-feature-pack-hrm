@@ -29,8 +29,13 @@ export function deriveEmployeeNamesFromEmail(email: string): { firstName: string
   return { firstName: 'Employee', lastName: 'User' };
 }
 
-export function getAuthUrl(): string {
-  return process.env.NEXT_PUBLIC_HIT_AUTH_URL || '/api/proxy/auth';
+export function getAuthUrlFromRequest(request: NextRequest): string {
+  // Always prefer the app-owned auth proxy.
+  // It forwards Authorization/cookies AND attaches X-HIT-Service-Token (required by modules in many deployments).
+  //
+  // IMPORTANT: server-side fetch() requires an absolute URL.
+  const origin = new URL(request.url).origin;
+  return `${origin}/api/proxy/auth`;
 }
 
 export function getForwardedBearerFromRequest(request: NextRequest): string {

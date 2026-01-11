@@ -41,11 +41,13 @@ export async function GET(request: NextRequest) {
     authUserCount: number | null;
     ensured: number | null;
     provisioningError: string | null;
+    authUrl: string | null;
   } = {
     authDirectoryStatus: null,
     authUserCount: null,
     ensured: null,
     provisioningError: null,
+    authUrl: null,
   };
 
   try {
@@ -54,6 +56,7 @@ export async function GET(request: NextRequest) {
     if (bearer) headers['Authorization'] = bearer;
 
     const authUrl = getAuthUrl();
+    provisionMeta.authUrl = authUrl;
     const res = await fetch(`${authUrl}/directory/users`, {
       method: 'GET',
       headers,

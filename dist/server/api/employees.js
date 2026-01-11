@@ -34,6 +34,7 @@ export async function GET(request) {
         authUserCount: null,
         ensured: null,
         provisioningError: null,
+        authUrl: null,
     };
     try {
         const bearer = getForwardedBearerFromRequest(request);
@@ -41,6 +42,7 @@ export async function GET(request) {
         if (bearer)
             headers['Authorization'] = bearer;
         const authUrl = getAuthUrl();
+        provisionMeta.authUrl = authUrl;
         const res = await fetch(`${authUrl}/directory/users`, {
             method: 'GET',
             headers,
