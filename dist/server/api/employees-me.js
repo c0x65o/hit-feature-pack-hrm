@@ -79,6 +79,19 @@ export async function PUT(request) {
     const preferredName = preferredNameRaw === null || preferredNameRaw === undefined
         ? null
         : String(preferredNameRaw).trim() || null;
+    // Optional string fields helper
+    const optionalString = (val) => {
+        if (val === null || val === undefined)
+            return null;
+        return String(val).trim() || null;
+    };
+    const phone = optionalString(body?.phone);
+    const address1 = optionalString(body?.address1);
+    const address2 = optionalString(body?.address2);
+    const city = optionalString(body?.city);
+    const state = optionalString(body?.state);
+    const postalCode = optionalString(body?.postalCode);
+    const country = optionalString(body?.country);
     if (!firstName)
         return jsonError('firstName is required', 400);
     if (!lastName)
@@ -97,6 +110,13 @@ export async function PUT(request) {
             firstName,
             lastName,
             preferredName,
+            phone,
+            address1,
+            address2,
+            city,
+            state,
+            postalCode,
+            country,
             isActive: true,
         })
             .returning();
@@ -109,6 +129,13 @@ export async function PUT(request) {
         firstName,
         lastName,
         preferredName,
+        phone,
+        address1,
+        address2,
+        city,
+        state,
+        postalCode,
+        country,
     })
         .where(eq(employees.userEmail, user.email))
         .returning();

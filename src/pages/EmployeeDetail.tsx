@@ -10,6 +10,8 @@ import {
   Mail,
   Calendar,
   Edit2,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import type { BreadcrumbItem } from '@hit/ui-kit';
 import { useUi } from '@hit/ui-kit';
@@ -27,6 +29,13 @@ interface Employee {
   firstName: string;
   lastName: string;
   preferredName: string | null;
+  phone: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
   isActive?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -306,9 +315,17 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
               )}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, opacity: 0.8 }}>
-              <Mail size={14} />
-              <Text size="base">{employee.userEmail}</Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 4, opacity: 0.8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={14} />
+                <Text size="base">{employee.userEmail}</Text>
+              </div>
+              {employee.phone && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Phone size={14} />
+                  <Text size="base">{employee.phone}</Text>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>

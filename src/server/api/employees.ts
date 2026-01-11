@@ -3,7 +3,7 @@ import { and, asc, desc, like, or, sql, type AnyColumn } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
 import { employees } from '@/lib/feature-pack-schemas';
-import { requireAdmin } from '../auth';
+import { requirePageAccess } from '../auth';
 import { ensureEmployeesExistForEmails, getAuthUrlFromRequest, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
 
 export const dynamic = 'force-dynamic';
@@ -18,8 +18,8 @@ function jsonError(message: string, status = 400) {
  * Admin: list employees
  */
 export async function GET(request: NextRequest) {
-  const admin = requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const gate = await requirePageAccess(request, '/hrm/employees');
+  if (gate instanceof NextResponse) return gate;
 
   const db = getDb();
   const url = new URL(request.url);
@@ -152,8 +152,8 @@ export async function GET(request: NextRequest) {
  * Employees are auto-provisioned from auth users. Creating manually is not supported.
  */
 export async function POST(request: NextRequest) {
-  const admin = requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const gate = await requirePageAccess(request, '/hrm/employees');
+  if (gate instanceof NextResponse) return gate;
   return NextResponse.json(
     { error: 'Employees are auto-provisioned from auth users. Edit the employee record instead.' },
     { status: 405 }

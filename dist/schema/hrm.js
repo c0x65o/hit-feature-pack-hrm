@@ -15,6 +15,15 @@ export const employees = pgTable('hrm_employees', {
     firstName: varchar('first_name', { length: 255 }).notNull(),
     lastName: varchar('last_name', { length: 255 }).notNull(),
     preferredName: varchar('preferred_name', { length: 255 }),
+    // Contact information
+    phone: varchar('phone', { length: 50 }),
+    // Address fields
+    address1: varchar('address1', { length: 255 }),
+    address2: varchar('address2', { length: 255 }),
+    city: varchar('city', { length: 100 }),
+    state: varchar('state', { length: 100 }),
+    postalCode: varchar('postal_code', { length: 20 }),
+    country: varchar('country', { length: 100 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
         .defaultNow()
@@ -30,4 +39,11 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
     firstName: z.string().min(1),
     lastName: z.string().min(1),
     preferredName: z.string().min(1).optional(),
+    phone: z.string().max(50).optional(),
+    address1: z.string().max(255).optional(),
+    address2: z.string().max(255).optional(),
+    city: z.string().max(100).optional(),
+    state: z.string().max(100).optional(),
+    postalCode: z.string().max(20).optional(),
+    country: z.string().max(100).optional(),
 });

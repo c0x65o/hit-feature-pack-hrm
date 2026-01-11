@@ -78,7 +78,18 @@ export async function PUT(request: NextRequest) {
   if (!user.email) return jsonError('Missing user email', 400);
 
   const body = (await request.json().catch(() => null)) as
-    | { firstName?: unknown; lastName?: unknown; preferredName?: unknown }
+    | { 
+        firstName?: unknown; 
+        lastName?: unknown; 
+        preferredName?: unknown;
+        phone?: unknown;
+        address1?: unknown;
+        address2?: unknown;
+        city?: unknown;
+        state?: unknown;
+        postalCode?: unknown;
+        country?: unknown;
+      }
     | null;
 
   const firstName = String(body?.firstName ?? '').trim();
@@ -88,6 +99,20 @@ export async function PUT(request: NextRequest) {
     preferredNameRaw === null || preferredNameRaw === undefined
       ? null
       : String(preferredNameRaw).trim() || null;
+
+  // Optional string fields helper
+  const optionalString = (val: unknown): string | null => {
+    if (val === null || val === undefined) return null;
+    return String(val).trim() || null;
+  };
+
+  const phone = optionalString(body?.phone);
+  const address1 = optionalString(body?.address1);
+  const address2 = optionalString(body?.address2);
+  const city = optionalString(body?.city);
+  const state = optionalString(body?.state);
+  const postalCode = optionalString(body?.postalCode);
+  const country = optionalString(body?.country);
 
   if (!firstName) return jsonError('firstName is required', 400);
   if (!lastName) return jsonError('lastName is required', 400);
@@ -108,6 +133,13 @@ export async function PUT(request: NextRequest) {
         firstName,
         lastName,
         preferredName,
+        phone,
+        address1,
+        address2,
+        city,
+        state,
+        postalCode,
+        country,
         isActive: true,
       })
       .returning();
@@ -125,6 +157,13 @@ export async function PUT(request: NextRequest) {
       firstName,
       lastName,
       preferredName,
+      phone,
+      address1,
+      address2,
+      city,
+      state,
+      postalCode,
+      country,
     })
     .where(eq(employees.userEmail, user.email))
     .returning();

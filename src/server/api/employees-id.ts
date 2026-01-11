@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
 import { employees } from '@/lib/feature-pack-schemas';
-import { requireAdmin } from '../auth';
+import { requirePageAccess } from '../auth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,8 +22,8 @@ function getIdFromPath(request: NextRequest): string {
  * GET /api/hrm/employees/[id]
  */
 export async function GET(request: NextRequest) {
-  const admin = requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const gate = await requirePageAccess(request, '/hrm/employees/[id]');
+  if (gate instanceof NextResponse) return gate;
 
   const id = getIdFromPath(request);
   if (!id) return jsonError('Missing employee id', 400);
@@ -39,14 +39,25 @@ export async function GET(request: NextRequest) {
  * PUT /api/hrm/employees/[id]
  */
 export async function PUT(request: NextRequest) {
-  const admin = requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const gate = await requirePageAccess(request, '/hrm/employees/[id]/edit');
+  if (gate instanceof NextResponse) return gate;
 
   const id = getIdFromPath(request);
   if (!id) return jsonError('Missing employee id', 400);
 
   const body = (await request.json().catch(() => null)) as
-    | { firstName?: unknown; lastName?: unknown; preferredName?: unknown }
+    | { 
+        firstName?: unknown; 
+        lastName?: unknown; 
+        preferredName?: unknown;
+        phone?: unknown;
+        address1?: unknown;
+        address2?: unknown;
+        city?: unknown;
+        state?: unknown;
+        postalCode?: unknown;
+        country?: unknown;
+      }
     | null;
 
   const firstName = body?.firstName !== undefined ? String(body.firstName ?? '').trim() : undefined;
@@ -57,6 +68,21 @@ export async function PUT(request: NextRequest) {
       : body.preferredName === null
         ? null
         : String(body.preferredName).trim() || null;
+
+  // Optional string fields helper
+  const optionalString = (val: unknown): string | null | undefined => {
+    if (val === undefined) return undefined;
+    if (val === null) return null;
+    return String(val).trim() || null;
+  };
+
+  const phone = optionalString(body?.phone);
+  const address1 = optionalString(body?.address1);
+  const address2 = optionalString(body?.address2);
+  const city = optionalString(body?.city);
+  const state = optionalString(body?.state);
+  const postalCode = optionalString(body?.postalCode);
+  const country = optionalString(body?.country);
 
   const update: Record<string, any> = {};
   if (firstName !== undefined) {
@@ -70,6 +96,13 @@ export async function PUT(request: NextRequest) {
   if (preferredName !== undefined) {
     update.preferredName = preferredName;
   }
+  if (phone !== undefined) update.phone = phone;
+  if (address1 !== undefined) update.address1 = address1;
+  if (address2 !== undefined) update.address2 = address2;
+  if (city !== undefined) update.city = city;
+  if (state !== undefined) update.state = state;
+  if (postalCode !== undefined) update.postalCode = postalCode;
+  if (country !== undefined) update.country = country;
 
   if (Object.keys(update).length === 0) return jsonError('No fields to update', 400);
 
@@ -84,8 +117,8 @@ export async function PUT(request: NextRequest) {
  * DELETE /api/hrm/employees/[id]
  */
 export async function DELETE(request: NextRequest) {
-  const admin = requireAdmin(request);
-  if (admin instanceof NextResponse) return admin;
+  const gate = await requirePageAccess(request, '/hrm/employees/[id]/edit');
+  if (gate instanceof NextResponse) return gate;
   return NextResponse.json(
     { error: 'Employees are auto-provisioned from auth users. Deleting is not supported.' },
     { status: 405 }

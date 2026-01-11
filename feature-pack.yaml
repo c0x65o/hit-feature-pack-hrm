@@ -42,13 +42,13 @@ api:
 routes:
   - path: /hrm/employees
     page: Employees
-    roles: [admin]
+    roles: []  # page permissions (security groups) decide access; roles are not used for HRM gating
   - path: /hrm/employees/[id]
     page: EmployeeDetail
-    roles: [admin]
+    roles: []
   - path: /hrm/employees/[id]/edit
     page: EmployeeEdit
-    roles: [admin]
+    roles: []
 
 nav:
   - id: hrm
@@ -56,7 +56,6 @@ nav:
     icon: Users
     group: main
     weight: 50
-    roles: [admin]
     showWhen: authenticated
     children:
       - id: hrm-employees
@@ -64,5 +63,4 @@ nav:
         path: /hrm/employees
         icon: IdCard
         weight: 10
-        roles: [admin]
         showWhen: authenticated
