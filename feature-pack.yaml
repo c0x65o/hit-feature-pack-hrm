@@ -43,6 +43,9 @@ routes:
   - path: /hrm/employees
     page: Employees
     roles: [admin]
+  - path: /hrm/employees/[id]
+    page: EmployeeDetail
+    roles: [admin]
 
 nav:
   - id: hrm

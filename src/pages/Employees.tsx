@@ -195,7 +195,7 @@ export function Employees({ onNavigate }: EmployeesProps) {
           data={items as any}
           loading={loading}
           emptyMessage="No employees yet."
-          onRowClick={(row: Record<string, unknown>) => navigate(`/hrm/employees?selected=${encodeURIComponent(String((row as any).id || ''))}`)}
+          onRowClick={(row: Record<string, unknown>) => navigate(`/hrm/employees/${encodeURIComponent(String((row as any).id || ''))}`)}
           onRefresh={fetchEmployees}
           refreshing={loading}
           total={total}
