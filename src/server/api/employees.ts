@@ -54,6 +54,11 @@ export async function GET(request: NextRequest) {
     const bearer = getForwardedBearerFromRequest(request);
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (bearer) headers['Authorization'] = bearer;
+    const serviceToken =
+      request.headers.get('x-hit-service-token') ||
+      request.headers.get('X-HIT-Service-Token') ||
+      '';
+    if (serviceToken) headers['X-HIT-Service-Token'] = serviceToken;
 
     const authUrl = getAuthUrlFromRequest(request);
     provisionMeta.authUrl = authUrl;
