@@ -38,6 +38,11 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-id"
       description: "Admin: get/update an employee by id"
 
+    - path: /api/hrm/employees/[id]/photo
+      methods: [PUT]
+      handler: "@hit/feature-pack-hrm/server/api/employees-photo"
+      description: "Update employee profile photo (self or admin)"
+
 # Routes (pre-1.0: start Employees UI)
 routes:
   - path: /hrm/employees

@@ -136,6 +136,7 @@ export async function PUT(request) {
         state,
         postalCode,
         country,
+        updatedAt: new Date(),
     })
         .where(eq(employees.userEmail, user.email))
         .returning();

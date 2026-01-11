@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   Shield,
@@ -12,7 +12,11 @@ import {
   Edit2,
   Phone,
   MapPin,
+  Camera,
+  Trash2,
+  Download,
 } from 'lucide-react';
+import { downloadVCard } from '../utils/vcard';
 import type { BreadcrumbItem } from '@hit/ui-kit';
 import { useUi } from '@hit/ui-kit';
 import { UserAvatar } from '@hit/ui-kit/components/UserAvatar';
@@ -146,11 +150,137 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
   const [effectivePerms, setEffectivePerms] = useState<EffectivePermissions | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Photo upload state
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const navigate = (path: string) => {
     if (onNavigate) onNavigate(path);
     else if (typeof window !== 'undefined') window.location.href = path;
   };
+  
+  // Handle photo file selection
+  const handlePhotoSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !employee) return;
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Please select an image file');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError('Image must be less than 5MB');
+      return;
+    }
+    
+    try {
+      setUploadingPhoto(true);
+      setPhotoError(null);
+      
+      // Convert to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(file);
+      const base64Data = await base64Promise;
+      
+      // Upload via API
+      const token = getStoredToken();
+      if (!token) throw new Error('You must be signed in');
+      
+      const response = await fetch(`/api/hrm/employees/${encodeURIComponent(employee.id)}/photo`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profile_picture_url: base64Data }),
+      });
+      
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.detail || 'Failed to upload photo');
+      }
+      
+      // Update local state
+      setProfilePictureUrl(data.profile_picture_url || base64Data);
+      setAuthUser((prev: AuthUser | null) => prev ? { ...prev, profile_picture_url: data.profile_picture_url || base64Data } : prev);
+    } catch (e: any) {
+      setPhotoError(e?.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, [employee]);
+  
+  // Handle photo deletion
+  const handlePhotoDelete = useCallback(async () => {
+    if (!employee) return;
+    
+    try {
+      setUploadingPhoto(true);
+      setPhotoError(null);
+      
+      const token = getStoredToken();
+      if (!token) throw new Error('You must be signed in');
+      
+      const response = await fetch(`/api/hrm/employees/${encodeURIComponent(employee.id)}/photo`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profile_picture_url: null }),
+      });
+      
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.detail || 'Failed to remove photo');
+      }
+      
+      setProfilePictureUrl(null);
+      setAuthUser((prev: AuthUser | null) => prev ? { ...prev, profile_picture_url: null } : prev);
+    } catch (e: any) {
+      setPhotoError(e?.message || 'Failed to remove photo');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, [employee]);
+
+  // Handle vCard download
+  const handleDownloadVCard = useCallback(() => {
+    if (!employee) return;
+    
+    const displayName = employee.preferredName?.trim() 
+      || `${employee.firstName} ${employee.lastName}`.trim();
+    
+    downloadVCard({
+      firstName: employee.firstName,
+      lastName: employee.lastName,
+      fullName: displayName,
+      email: employee.userEmail,
+      phone: employee.phone,
+      address1: employee.address1,
+      address2: employee.address2,
+      city: employee.city,
+      state: employee.state,
+      postalCode: employee.postalCode,
+      country: employee.country,
+      photoUrl: profilePictureUrl || authUser?.profile_picture_url,
+    }, `${displayName.replace(/\s+/g, '_')}.vcf`);
+  }, [employee, profilePictureUrl, authUser?.profile_picture_url]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -277,6 +407,10 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
             <ArrowLeft size={16} style={{ marginRight: 4 }} />
             Back
           </Button>
+          <Button variant="secondary" onClick={handleDownloadVCard}>
+            <Download size={16} style={{ marginRight: 4 }} />
+            vCard
+          </Button>
           <Button variant="primary" onClick={() => navigate(`/hrm/employees/${encodeURIComponent(employee.id)}/edit`)}>
             <Edit2 size={16} style={{ marginRight: 4 }} />
             Edit
@@ -290,18 +424,94 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
         </Alert>
       )}
 
+      {/* Photo upload error */}
+      {photoError && (
+        <Alert variant="error" title="Photo Error" style={{ marginBottom: 16 }}>
+          {photoError}
+        </Alert>
+      )}
+
       {/* Profile Header Card */}
       <Card>
         <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-          {/* Avatar Section */}
+          {/* Avatar Section with Photo Upload */}
           <div style={{ position: 'relative' }}>
             <UserAvatar
               email={employee.userEmail}
               name={displayName}
-              src={authUser?.profile_picture_url || undefined}
+              src={profilePictureUrl || authUser?.profile_picture_url || undefined}
               size="lg"
             />
-            {/* Future: camera icon overlay for photo edit */}
+            
+            {/* Photo upload overlay */}
+            <div 
+              style={{ 
+                position: 'absolute', 
+                bottom: 0, 
+                right: 0, 
+                display: 'flex', 
+                gap: 4,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  border: 'none',
+                  backgroundColor: 'var(--color-primary, #3b82f6)',
+                  color: 'white',
+                  cursor: uploadingPhoto ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                }}
+                title="Upload photo"
+              >
+                {uploadingPhoto ? (
+                  <div style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <Camera size={14} />
+                )}
+              </button>
+              
+              {(profilePictureUrl || authUser?.profile_picture_url) && (
+                <button
+                  type="button"
+                  onClick={handlePhotoDelete}
+                  disabled={uploadingPhoto}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: 'var(--color-error, #ef4444)',
+                    color: 'white',
+                    cursor: uploadingPhoto ? 'wait' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                  }}
+                  title="Remove photo"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
+            
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoSelect}
+              style={{ display: 'none' }}
+            />
           </div>
 
           {/* Basic Info */}
@@ -347,6 +557,45 @@ export function EmployeeDetail({ id, onNavigate }: EmployeeDetailProps) {
           </div>
         </div>
       </Card>
+
+      {/* Contact Information Card */}
+      {(employee.phone || employee.address1 || employee.city) && (
+        <Card style={{ marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+            <MapPin size={18} />
+            <Text size="lg" weight="semibold">Contact Information</Text>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 24 }}>
+            {employee.phone && (
+              <div>
+                <Text size="sm" color="secondary">Phone</Text>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                  <Phone size={14} style={{ opacity: 0.6 }} />
+                  <Text size="base">{employee.phone}</Text>
+                </div>
+              </div>
+            )}
+
+            {(employee.address1 || employee.city) && (
+              <div>
+                <Text size="sm" color="secondary">Address</Text>
+                <div style={{ marginTop: 4 }}>
+                  {employee.address1 && <Text size="base">{employee.address1}</Text>}
+                  {employee.address2 && <Text size="base">{employee.address2}</Text>}
+                  {(employee.city || employee.state || employee.postalCode) && (
+                    <Text size="base">
+                      {[employee.city, employee.state].filter(Boolean).join(', ')}
+                      {employee.postalCode && ` ${employee.postalCode}`}
+                    </Text>
+                  )}
+                  {employee.country && <Text size="base">{employee.country}</Text>}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
 
       {/* Access & Security Card */}
       <Card style={{ marginTop: 16 }}>

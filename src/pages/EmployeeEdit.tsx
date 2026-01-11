@@ -16,6 +16,13 @@ interface Employee {
   firstName: string;
   lastName: string;
   preferredName: string | null;
+  phone: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  country: string | null;
   isActive?: boolean;
 }
 
@@ -41,6 +48,13 @@ export function EmployeeEdit({ id, onNavigate }: EmployeeEditProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [preferredName, setPreferredName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address1, setAddress1] = useState('');
+  const [address2, setAddress2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('');
 
   const navigate = (path: string) => {
     if (onNavigate) onNavigate(path);
@@ -66,6 +80,13 @@ export function EmployeeEdit({ id, onNavigate }: EmployeeEditProps) {
       setFirstName(emp.firstName || '');
       setLastName(emp.lastName || '');
       setPreferredName(emp.preferredName || '');
+      setPhone(emp.phone || '');
+      setAddress1(emp.address1 || '');
+      setAddress2(emp.address2 || '');
+      setCity(emp.city || '');
+      setState(emp.state || '');
+      setPostalCode(emp.postalCode || '');
+      setCountry(emp.country || '');
     } catch (e: any) {
       setError(e?.message || 'Failed to load employee');
       setEmployee(null);
@@ -94,6 +115,13 @@ export function EmployeeEdit({ id, onNavigate }: EmployeeEditProps) {
           firstName,
           lastName,
           preferredName: preferredName || null,
+          phone: phone || null,
+          address1: address1 || null,
+          address2: address2 || null,
+          city: city || null,
+          state: state || null,
+          postalCode: postalCode || null,
+          country: country || null,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -177,15 +205,45 @@ export function EmployeeEdit({ id, onNavigate }: EmployeeEditProps) {
 
         <Input label="User email" value={employee.userEmail} disabled />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
-          <Input label="First name" value={firstName} onChange={(e: any) => setFirstName(e.target.value)} />
-          <Input label="Last name" value={lastName} onChange={(e: any) => setLastName(e.target.value)} />
+          <Input label="First name" value={firstName} onChange={setFirstName} />
+          <Input label="Last name" value={lastName} onChange={setLastName} />
         </div>
         <div style={{ marginTop: 12 }}>
           <Input
             label="Preferred name (optional)"
             value={preferredName}
-            onChange={(e: any) => setPreferredName(e.target.value)}
+            onChange={setPreferredName}
           />
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <Input
+            label="Phone (optional)"
+            value={phone}
+            onChange={setPhone}
+          />
+        </div>
+
+        <div style={{ marginTop: 24, marginBottom: 8, fontWeight: 600, opacity: 0.8 }}>Address</div>
+        <Input
+          label="Address line 1"
+          value={address1}
+          onChange={setAddress1}
+        />
+        <div style={{ marginTop: 12 }}>
+          <Input
+            label="Address line 2 (optional)"
+            value={address2}
+            onChange={setAddress2}
+          />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginTop: 12 }}>
+          <Input label="City" value={city} onChange={setCity} />
+          <Input label="State" value={state} onChange={setState} />
+          <Input label="Postal code" value={postalCode} onChange={setPostalCode} />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Input label="Country" value={country} onChange={setCountry} />
         </div>
       </Card>
 

@@ -106,6 +106,9 @@ export async function PUT(request: NextRequest) {
 
   if (Object.keys(update).length === 0) return jsonError('No fields to update', 400);
 
+  // Explicitly set updatedAt to avoid $onUpdate serialization issues
+  update.updatedAt = new Date();
+
   const db = getDb();
   const updated = await db.update(employees).set(update).where(eq(employees.id, id as any)).returning();
   const employee = updated[0] ?? null;
