@@ -113,22 +113,42 @@ export async function requirePageAccess(request: NextRequest, pagePath: string):
 
   const authBase = getAuthProxyBaseUrlFromRequest(request);
   try {
-    const res = await fetch(`${authBase}/permissions/pages/check-batch`, {
-      method: 'POST',
+    // Use the single-page check endpoint so failures include diagnostic context
+    // (e.g. source: no_permission_sets | no_grant | unknown_page).
+    const res = await fetch(`${authBase}/permissions/pages/check${String(pagePath)}`, {
+      method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         Authorization: bearer,
         ...(serviceToken ? { 'X-HIT-Service-Token': serviceToken } : {}),
       },
       credentials: 'include',
-      body: JSON.stringify([String(pagePath)]),
     });
-    if (!res.ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const json = await res.json().catch(() => ({}));
-    const allowed = Boolean((json as any)?.[String(pagePath)]);
-    if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    // Fail closed if auth proxy returns non-200 or unexpected shape.
+    const allowed = Boolean((json as any)?.has_permission ?? (json as any)?.hasPermission ?? false);
+    if (!res.ok || !allowed) {
+      // Keep response safe/minimal but include enough to debug in audit logs.
+      const debug = typeof json === 'object' && json ? json : { raw: json };
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          code: 'page_access_denied',
+          pagePath,
+          authz: {
+            status: res.status,
+            ...(debug as any),
+          },
+        },
+        { status: 403 }
+      );
+    }
     return user;
   } catch {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Forbidden', code: 'page_access_denied', pagePath, authz: { status: null, source: 'auth_proxy_exception' } },
+      { status: 403 }
+    );
   }
 }
