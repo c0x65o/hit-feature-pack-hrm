@@ -143,6 +143,9 @@ export async function GET(request) {
     const lddMap = {};
     if (userEmails.length > 0) {
         try {
+            // Use IN clause with sql.join for proper array parameter handling
+            // ANY(${array}) doesn't work correctly with drizzle's sql template
+            const emailParams = sql.join(userEmails.map(e => sql `${e}`), sql `, `);
             const lddResult = await db.execute(sql `
         SELECT 
           a.user_key,
@@ -153,7 +156,7 @@ export async function GET(request) {
         LEFT JOIN org_divisions d ON d.id = a.division_id
         LEFT JOIN org_departments dp ON dp.id = a.department_id
         LEFT JOIN org_locations l ON l.id = a.location_id
-        WHERE a.user_key = ANY(${userEmails})
+        WHERE a.user_key IN (${emailParams})
       `);
             const rows = lddResult.rows;
             for (const row of rows) {
@@ -164,8 +167,9 @@ export async function GET(request) {
                 };
             }
         }
-        catch {
-            // If org tables don't exist yet, just continue without LDD data
+        catch (e) {
+            // Log the error for debugging - org tables might not exist yet
+            console.error('Failed to fetch LDD data for employees:', e);
         }
     }
     // Merge employee data with LDD
