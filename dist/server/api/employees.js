@@ -35,17 +35,33 @@ export async function GET(request) {
         ensured: null,
         provisioningError: null,
         authUrl: null,
+        bearerPresent: false,
+        cookiePresent: Boolean(request.cookies.get('hit_token')?.value),
+        incomingServiceTokenPresent: Boolean(request.headers.get('x-hit-service-token') || request.headers.get('X-HIT-Service-Token')),
+        authProxyProxiedFrom: null,
     };
     try {
         const bearer = getForwardedBearerFromRequest(request);
+        provisionMeta.bearerPresent = Boolean(bearer);
         const headers = { 'Content-Type': 'application/json' };
         if (bearer)
             headers['Authorization'] = bearer;
+        // Forward cookies to the proxy as a fallback auth mechanism.
+        // This improves parity when Authorization headers are stripped by an intermediary.
+        const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
+        if (cookieHeader)
+            headers['Cookie'] = cookieHeader;
         const serviceToken = request.headers.get('x-hit-service-token') ||
             request.headers.get('X-HIT-Service-Token') ||
+            process.env.HIT_SERVICE_TOKEN ||
             '';
         if (serviceToken)
             headers['X-HIT-Service-Token'] = serviceToken;
+        // When calling the auth module directly, it needs this to fetch the compiled permissions catalog.
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+        const proto = request.headers.get('x-forwarded-proto') || 'https';
+        if (host)
+            headers['X-Frontend-Base-URL'] = `${proto}://${host}`;
         const authUrl = getAuthUrlFromRequest(request);
         provisionMeta.authUrl = authUrl;
         const res = await fetch(`${authUrl}/directory/users`, {
@@ -54,11 +70,17 @@ export async function GET(request) {
             credentials: 'include',
         });
         provisionMeta.authDirectoryStatus = res.status;
+        provisionMeta.authProxyProxiedFrom = res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From');
         if (!res.ok) {
             const body = await res.json().catch(() => ({}));
-            const msg = body?.detail || body?.message || `Auth directory users failed (${res.status})`;
+            const msg = body?.error || body?.detail || body?.message || `Auth directory users failed (${res.status})`;
             // IMPORTANT: don't silently return an empty employee list; this hides the root cause.
-            return NextResponse.json({ error: msg, meta: provisionMeta }, { status: res.status });
+            return NextResponse.json({
+                error: msg,
+                // Keep extra info compact but actionable for debugging.
+                upstream: { path: '/directory/users', status: res.status, body },
+                meta: provisionMeta,
+            }, { status: res.status });
         }
         const users = await res.json().catch(() => []);
         if (!Array.isArray(users)) {

@@ -19,6 +19,18 @@ function getAuthProxyBaseUrlFromRequest(request) {
     const origin = new URL(request.url).origin;
     return `${origin}/api/proxy/auth`;
 }
+function getFrontendBaseUrlFromRequest(request) {
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    return host ? `${proto}://${host}` : new URL(request.url).origin;
+}
+function getAuthBaseUrl(request) {
+    const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
+    if (envUrl && String(envUrl).trim()) {
+        return { baseUrl: String(envUrl).trim().replace(/\/$/, ''), source: 'env' };
+    }
+    return { baseUrl: getAuthProxyBaseUrlFromRequest(request).replace(/\/$/, ''), source: 'proxy' };
+}
 export function extractUserFromRequest(request) {
     // Check for token in cookie first
     let token = request.cookies.get('hit_token')?.value;
@@ -93,17 +105,20 @@ export async function requirePageAccess(request, pagePath) {
     // server runtime.
     const serviceToken = request.headers.get('x-hit-service-token') ||
         request.headers.get('X-HIT-Service-Token') ||
+        process.env.HIT_SERVICE_TOKEN ||
         '';
-    const authBase = getAuthProxyBaseUrlFromRequest(request);
+    const { baseUrl, source } = getAuthBaseUrl(request);
+    const frontendBaseUrl = getFrontendBaseUrlFromRequest(request);
     try {
-        // Use the single-page check endpoint so failures include diagnostic context
-        // (e.g. source: no_permission_sets | no_grant | unknown_page).
-        const res = await fetch(`${authBase}/permissions/pages/check${String(pagePath)}`, {
+        // Prefer direct auth module URL when available (avoids "server calls itself via ingress" failures).
+        // Still use the same endpoint so failures include diagnostic context.
+        const res = await fetch(`${baseUrl}/permissions/pages/check${String(pagePath)}`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: bearer,
                 ...(serviceToken ? { 'X-HIT-Service-Token': serviceToken } : {}),
+                ...(frontendBaseUrl ? { 'X-Frontend-Base-URL': frontendBaseUrl } : {}),
             },
             credentials: 'include',
         });
@@ -119,13 +134,25 @@ export async function requirePageAccess(request, pagePath) {
                 pagePath,
                 authz: {
                     status: res.status,
+                    authBaseSource: source,
                     ...debug,
                 },
             }, { status: 403 });
         }
         return user;
     }
-    catch {
-        return NextResponse.json({ error: 'Forbidden', code: 'page_access_denied', pagePath, authz: { status: null, source: 'auth_proxy_exception' } }, { status: 403 });
+    catch (e) {
+        return NextResponse.json({
+            error: 'Forbidden',
+            code: 'page_access_denied',
+            pagePath,
+            authz: {
+                status: null,
+                source: 'auth_proxy_exception',
+                authBaseSource: source,
+                authBaseUrl: baseUrl,
+                message: e?.message ? String(e.message) : 'Auth check threw',
+            },
+        }, { status: 403 });
     }
 }

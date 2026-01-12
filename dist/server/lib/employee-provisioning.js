@@ -25,9 +25,11 @@ export function deriveEmployeeNamesFromEmail(email) {
     return { firstName: 'Employee', lastName: 'User' };
 }
 export function getAuthUrlFromRequest(request) {
-    // Always prefer the app-owned auth proxy.
-    // It forwards Authorization/cookies AND attaches X-HIT-Service-Token (required by modules in many deployments).
-    //
+    // Prefer direct auth module URL when available (avoids "server calls itself via ingress" failures).
+    // Fall back to the app-owned auth proxy otherwise.
+    const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
+    if (envUrl && String(envUrl).trim())
+        return String(envUrl).trim().replace(/\/$/, '');
     // IMPORTANT: server-side fetch() requires an absolute URL.
     const origin = new URL(request.url).origin;
     return `${origin}/api/proxy/auth`;
