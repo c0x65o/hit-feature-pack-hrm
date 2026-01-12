@@ -48,12 +48,15 @@ routes:
   - path: /hrm/employees
     page: Employees
     roles: []  # page permissions (security groups) decide access; roles are not used for HRM gating
+    default_roles_allow: [admin]
   - path: /hrm/employees/[id]
     page: EmployeeDetail
     roles: []
+    default_roles_allow: [admin]
   - path: /hrm/employees/[id]/edit
     page: EmployeeEdit
     roles: []
+    default_roles_allow: [admin]
 
 nav:
   - id: hrm
