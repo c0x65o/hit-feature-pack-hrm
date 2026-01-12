@@ -47,16 +47,19 @@ api:
 routes:
   - path: /hrm/employees
     page: Employees
-    roles: []  # page permissions (security groups) decide access; roles are not used for HRM gating
+    roles: []
     default_roles_allow: [admin]
+    authz: { entity: employees, verb: read }
   - path: /hrm/employees/[id]
     page: EmployeeDetail
     roles: []
     default_roles_allow: [admin]
+    authz: { entity: employees, verb: read }
   - path: /hrm/employees/[id]/edit
     page: EmployeeEdit
     roles: []
     default_roles_allow: [admin]
+    authz: { entity: employees, verb: write }
 
 nav:
   - id: hrm
@@ -72,3 +75,91 @@ nav:
         icon: IdCard
         weight: 10
         showWhen: authenticated
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PERMISSIONS - Action definitions (for admin-core permissions UI + runtime checks)
+# ─────────────────────────────────────────────────────────────────────────────
+permissions:
+  actions:
+    # Scope Policy Tree: HRM (global) -> entity overrides.
+    #
+    # Scope modes:
+    # - none: deny all access for this verb/entity (hide pages + block APIs)
+    # - any: ignore scope (read everything)
+    # - own: only owned records (employee.userEmail === current user email)
+    # - ldd: owner OR matching L/D/D (via org_user_assignments)
+    #
+    # These are mutually exclusive per node; the Security Groups UI renders them as dropdowns.
+    - key: hrm.read.scope.none
+      label: "HRM Read Scope = None"
+      description: "Deny all HRM read access."
+      default_enabled: false
+    - key: hrm.read.scope.any
+      label: "HRM Read Scope = Any"
+      description: "Read all HRM entities regardless of LDD."
+      default_enabled: false
+    - key: hrm.read.scope.own
+      label: "HRM Read Scope = Own"
+      description: "Read only HRM entities you own (your own employee record)."
+      default_enabled: false
+    - key: hrm.read.scope.ldd
+      label: "HRM Read Scope = LDD"
+      description: "Read HRM entities you own, or that match your L/D/D scope."
+      default_enabled: false
+
+    - key: hrm.write.scope.none
+      label: "HRM Write Scope = None"
+      description: "Deny all HRM write access."
+      default_enabled: false
+    - key: hrm.write.scope.any
+      label: "HRM Write Scope = Any"
+      description: "Edit HRM entities regardless of LDD."
+      default_enabled: false
+    - key: hrm.write.scope.own
+      label: "HRM Write Scope = Own"
+      description: "Edit only HRM entities you own (your own employee record)."
+      default_enabled: false
+    - key: hrm.write.scope.ldd
+      label: "HRM Write Scope = LDD"
+      description: "Edit HRM entities you own, or that match your L/D/D scope."
+      default_enabled: false
+
+    # Employees override (optional): if set, overrides hrm.read.scope.* for employees only.
+    - key: hrm.employees.read.scope.none
+      label: "HRM Employees Read Scope = None"
+      description: "Deny all employee read access."
+      default_enabled: false
+    - key: hrm.employees.read.scope.any
+      label: "HRM Employees Read Scope = Any"
+      description: "Read employees regardless of LDD."
+      default_enabled: false
+    - key: hrm.employees.read.scope.own
+      label: "HRM Employees Read Scope = Own"
+      description: "Read only your own employee record."
+      default_enabled: false
+    - key: hrm.employees.read.scope.ldd
+      label: "HRM Employees Read Scope = LDD"
+      description: "Read employees you own, or that match your L/D/D scope."
+      default_enabled: false
+
+    - key: hrm.employees.write.scope.none
+      label: "HRM Employees Write Scope = None"
+      description: "Deny all employee write access."
+      default_enabled: false
+    - key: hrm.employees.write.scope.any
+      label: "HRM Employees Write Scope = Any"
+      description: "Edit employees regardless of LDD."
+      default_enabled: false
+    - key: hrm.employees.write.scope.own
+      label: "HRM Employees Write Scope = Own"
+      description: "Edit only your own employee record."
+      default_enabled: false
+    - key: hrm.employees.write.scope.ldd
+      label: "HRM Employees Write Scope = LDD"
+      description: "Edit employees you own, or that match your L/D/D scope."
+      default_enabled: false
+
+    - key: hrm.employees.create
+      label: Create Employee
+      description: "Create a new employee (employees are auto-provisioned, but this action controls access to creation flows)."
+      default_enabled: false

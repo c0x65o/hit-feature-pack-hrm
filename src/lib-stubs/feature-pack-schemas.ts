@@ -13,3 +13,13 @@ export {
   type UpdateEmployee,
 } from '../schema/hrm';
 
+// Cross-pack tables used by HRM server routes during compilation.
+//
+// IMPORTANT: do NOT import the real tables from other packs here. During feature pack
+// compilation, that can pull in a different copy/version of drizzle-orm and make
+// the types incompatible (two separate node_modules trees).
+//
+// At runtime, the consuming application's generated schemas module provides the
+// real merged implementations.
+export const userOrgAssignments: any = {} as any;
+export const orgEntityScopes: any = {} as any;

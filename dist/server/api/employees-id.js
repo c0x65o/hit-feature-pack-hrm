@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray, or } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { employees } from '@/lib/feature-pack-schemas';
-import { requirePageAccess } from '../auth';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { requirePageAccess, extractUserFromRequest } from '../auth';
+import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 function jsonError(message, status = 400) {
@@ -12,6 +13,59 @@ function getIdFromPath(request) {
     const url = new URL(request.url);
     const parts = url.pathname.split('/');
     return decodeURIComponent(parts[parts.length - 1] || '');
+}
+async function fetchUserOrgScopeIds(db, userKey) {
+    const rows = await db
+        .select({
+        divisionId: userOrgAssignments.divisionId,
+        departmentId: userOrgAssignments.departmentId,
+        locationId: userOrgAssignments.locationId,
+    })
+        .from(userOrgAssignments)
+        .where(eq(userOrgAssignments.userKey, userKey));
+    const divisionIds = [];
+    const departmentIds = [];
+    const locationIds = [];
+    for (const r of rows) {
+        if (r.divisionId && !divisionIds.includes(r.divisionId))
+            divisionIds.push(r.divisionId);
+        if (r.departmentId && !departmentIds.includes(r.departmentId))
+            departmentIds.push(r.departmentId);
+        if (r.locationId && !locationIds.includes(r.locationId))
+            locationIds.push(r.locationId);
+    }
+    return { divisionIds, departmentIds, locationIds };
+}
+async function canAccessEmployee(db, request, employeeUserEmail, verb) {
+    const user = extractUserFromRequest(request);
+    if (!user?.sub || !user?.email)
+        return false;
+    const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb });
+    if (mode === 'none') {
+        return false;
+    }
+    else if (mode === 'own') {
+        return employeeUserEmail.toLowerCase() === user.email.toLowerCase();
+    }
+    else if (mode === 'any') {
+        return true;
+    }
+    else if (mode === 'ldd') {
+        // Check if employee is the current user (own)
+        if (employeeUserEmail.toLowerCase() === user.email.toLowerCase()) {
+            return true;
+        }
+        // Check if employee's user has matching LDD assignments
+        const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
+        // Check if the employee's userEmail has matching assignments
+        const assignmentRows = await db
+            .select({ id: userOrgAssignments.id })
+            .from(userOrgAssignments)
+            .where(and(eq(userOrgAssignments.userKey, employeeUserEmail), or(scopeIds.divisionIds.length ? inArray(userOrgAssignments.divisionId, scopeIds.divisionIds) : undefined, scopeIds.departmentIds.length ? inArray(userOrgAssignments.departmentId, scopeIds.departmentIds) : undefined, scopeIds.locationIds.length ? inArray(userOrgAssignments.locationId, scopeIds.locationIds) : undefined)))
+            .limit(1);
+        return assignmentRows.length > 0;
+    }
+    return false;
 }
 /**
  * GET /api/hrm/employees/[id]
@@ -28,6 +82,11 @@ export async function GET(request) {
     const employee = rows[0] ?? null;
     if (!employee)
         return jsonError('Employee not found', 404);
+    // Check scope-based access
+    const canAccess = await canAccessEmployee(db, request, employee.userEmail, 'read');
+    if (!canAccess) {
+        return jsonError('Employee not found', 404);
+    }
     return NextResponse.json(employee);
 }
 /**
@@ -40,6 +99,17 @@ export async function PUT(request) {
     const id = getIdFromPath(request);
     if (!id)
         return jsonError('Missing employee id', 400);
+    const db = getDb();
+    // First check if employee exists and user has access
+    const existingRows = await db.select().from(employees).where(eq(employees.id, id)).limit(1);
+    const existingEmployee = existingRows[0] ?? null;
+    if (!existingEmployee)
+        return jsonError('Employee not found', 404);
+    // Check scope-based write access
+    const canAccess = await canAccessEmployee(db, request, existingEmployee.userEmail, 'write');
+    if (!canAccess) {
+        return jsonError('Forbidden', 403);
+    }
     const body = (await request.json().catch(() => null));
     const firstName = body?.firstName !== undefined ? String(body.firstName ?? '').trim() : undefined;
     const lastName = body?.lastName !== undefined ? String(body.lastName ?? '').trim() : undefined;
@@ -95,7 +165,6 @@ export async function PUT(request) {
         return jsonError('No fields to update', 400);
     // Explicitly set updatedAt to avoid $onUpdate serialization issues
     update.updatedAt = new Date();
-    const db = getDb();
     const updated = await db.update(employees).set(update).where(eq(employees.id, id)).returning();
     const employee = updated[0] ?? null;
     if (!employee)

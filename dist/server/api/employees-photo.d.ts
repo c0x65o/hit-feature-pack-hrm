@@ -5,8 +5,8 @@ export declare const runtime = "nodejs";
  * PUT /api/hrm/employees/[id]/photo
  *
  * Allows updating an employee's profile photo.
- * - If the employee is the current user, updates via /me endpoint (no admin required)
- * - If the employee is a different user, requires admin access
+ * - Users can always update their own photo (self-service)
+ * - For other employees, requires write scope access (any/ldd mode)
  *
  * Body: { profile_picture_url: string | null }
  */

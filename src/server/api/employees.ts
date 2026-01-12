@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, desc, like, or, sql, type AnyColumn } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, like, or, sql, type AnyColumn } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
-import { employees } from '@/lib/feature-pack-schemas';
-import { requirePageAccess } from '../auth';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { ensureEmployeesExistForEmails, getAuthUrlFromRequest, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
+import { resolveHrmScopeMode } from '../lib/scope-mode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,13 +14,45 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+async function fetchUserOrgScopeIds(db: any, userKey: string): Promise<{
+  divisionIds: string[];
+  departmentIds: string[];
+  locationIds: string[];
+}> {
+  const rows = await db
+    .select({
+      divisionId: userOrgAssignments.divisionId,
+      departmentId: userOrgAssignments.departmentId,
+      locationId: userOrgAssignments.locationId,
+    })
+    .from(userOrgAssignments)
+    .where(eq(userOrgAssignments.userKey, userKey));
+
+  const divisionIds: string[] = [];
+  const departmentIds: string[] = [];
+  const locationIds: string[] = [];
+
+  for (const r of rows as any[]) {
+    if (r.divisionId && !divisionIds.includes(r.divisionId)) divisionIds.push(r.divisionId);
+    if (r.departmentId && !departmentIds.includes(r.departmentId)) departmentIds.push(r.departmentId);
+    if (r.locationId && !locationIds.includes(r.locationId)) locationIds.push(r.locationId);
+  }
+
+  return { divisionIds, departmentIds, locationIds };
+}
+
 /**
  * GET /api/hrm/employees
- * Admin: list employees
+ * List employees with scope-based access control
  */
 export async function GET(request: NextRequest) {
   const gate = await requirePageAccess(request, '/hrm/employees');
   if (gate instanceof NextResponse) return gate;
+
+  const user = extractUserFromRequest(request);
+  if (!user?.sub || !user?.email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
   const db = getDb();
   const url = new URL(request.url);
@@ -123,7 +156,68 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: provisionMeta.provisioningError, meta: provisionMeta }, { status: 500 });
   }
 
+  // Resolve scope mode for read access
+  const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb: 'read' });
+  
   const conditions: any[] = [];
+  
+  // Apply scope-based filtering (explicit branching on none/own/ldd/any)
+  if (mode === 'none') {
+    // Explicit deny: return empty results (fail-closed but non-breaking for list UI)
+    conditions.push(sql<boolean>`false`);
+  } else if (mode === 'own') {
+    // Only show the current user's own employee record
+    conditions.push(eq(employees.userEmail, user.email));
+  } else if (mode === 'ldd') {
+    // Show employees where:
+    // 1. The employee is the current user (own)
+    // 2. The employee's user has matching L/D/D assignments
+    const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
+    
+    // Build condition: own OR matching LDD
+    const ownCondition = eq(employees.userEmail, user.email);
+    
+    // For LDD matching, we need to check if the employee's userEmail has matching assignments
+    // We'll use a subquery to check org_user_assignments
+    const lddParts: any[] = [];
+    if (scopeIds.divisionIds.length) {
+      lddParts.push(
+        sql`exists (
+          select 1 from ${userOrgAssignments}
+          where ${userOrgAssignments.userKey} = ${employees.userEmail}
+            and ${userOrgAssignments.divisionId} in (${sql.join(scopeIds.divisionIds.map(id => sql`${id}`), sql`, `)})
+        )`
+      );
+    }
+    if (scopeIds.departmentIds.length) {
+      lddParts.push(
+        sql`exists (
+          select 1 from ${userOrgAssignments}
+          where ${userOrgAssignments.userKey} = ${employees.userEmail}
+            and ${userOrgAssignments.departmentId} in (${sql.join(scopeIds.departmentIds.map(id => sql`${id}`), sql`, `)})
+        )`
+      );
+    }
+    if (scopeIds.locationIds.length) {
+      lddParts.push(
+        sql`exists (
+          select 1 from ${userOrgAssignments}
+          where ${userOrgAssignments.userKey} = ${employees.userEmail}
+            and ${userOrgAssignments.locationId} in (${sql.join(scopeIds.locationIds.map(id => sql`${id}`), sql`, `)})
+        )`
+      );
+    }
+    
+    if (lddParts.length > 0) {
+      conditions.push(or(ownCondition, or(...lddParts)!)!);
+    } else {
+      // No LDD assignments, fall back to own only
+      conditions.push(ownCondition);
+    }
+  } else if (mode === 'any') {
+    // No scoping - show all employees
+  }
+  
   if (search) {
     conditions.push(
       or(

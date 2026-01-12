@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, inArray, or, and } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { employees } from '@/lib/feature-pack-schemas';
-import { requireAuth } from '../auth';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { requireAuth, extractUserFromRequest } from '../auth';
+import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 function jsonError(message, status = 400) {
@@ -30,12 +31,66 @@ function getAuthUrlFromRequest(request) {
     const url = new URL(request.url);
     return `${url.protocol}//${url.host}/api/proxy/auth`;
 }
+async function fetchUserOrgScopeIds(db, userKey) {
+    const rows = await db
+        .select({
+        divisionId: userOrgAssignments.divisionId,
+        departmentId: userOrgAssignments.departmentId,
+        locationId: userOrgAssignments.locationId,
+    })
+        .from(userOrgAssignments)
+        .where(eq(userOrgAssignments.userKey, userKey));
+    const divisionIds = [];
+    const departmentIds = [];
+    const locationIds = [];
+    for (const r of rows) {
+        if (r.divisionId && !divisionIds.includes(r.divisionId))
+            divisionIds.push(r.divisionId);
+        if (r.departmentId && !departmentIds.includes(r.departmentId))
+            departmentIds.push(r.departmentId);
+        if (r.locationId && !locationIds.includes(r.locationId))
+            locationIds.push(r.locationId);
+    }
+    return { divisionIds, departmentIds, locationIds };
+}
+async function canAccessEmployeeForWrite(db, request, employeeUserEmail) {
+    const user = extractUserFromRequest(request);
+    if (!user?.sub || !user?.email)
+        return false;
+    // Always allow users to update their own photo (self-service)
+    if (employeeUserEmail.toLowerCase() === user.email.toLowerCase()) {
+        return true;
+    }
+    const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb: 'write' });
+    if (mode === 'none') {
+        return false;
+    }
+    else if (mode === 'own') {
+        // Already handled above (self-service)
+        return false;
+    }
+    else if (mode === 'any') {
+        return true;
+    }
+    else if (mode === 'ldd') {
+        // Check if employee's user has matching LDD assignments
+        const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
+        // Check if the employee's userEmail has matching assignments
+        const assignmentRows = await db
+            .select({ id: userOrgAssignments.id })
+            .from(userOrgAssignments)
+            .where(and(eq(userOrgAssignments.userKey, employeeUserEmail), or(scopeIds.divisionIds.length ? inArray(userOrgAssignments.divisionId, scopeIds.divisionIds) : undefined, scopeIds.departmentIds.length ? inArray(userOrgAssignments.departmentId, scopeIds.departmentIds) : undefined, scopeIds.locationIds.length ? inArray(userOrgAssignments.locationId, scopeIds.locationIds) : undefined)))
+            .limit(1);
+        return assignmentRows.length > 0;
+    }
+    return false;
+}
 /**
  * PUT /api/hrm/employees/[id]/photo
  *
  * Allows updating an employee's profile photo.
- * - If the employee is the current user, updates via /me endpoint (no admin required)
- * - If the employee is a different user, requires admin access
+ * - Users can always update their own photo (self-service)
+ * - For other employees, requires write scope access (any/ldd mode)
  *
  * Body: { profile_picture_url: string | null }
  */
@@ -61,37 +116,20 @@ export async function PUT(request) {
     const employee = rows[0] ?? null;
     if (!employee)
         return jsonError('Employee not found', 404);
+    // Check if this is the current user updating their own photo (self-service)
+    const isSelf = employee.userEmail.toLowerCase() === user.email.toLowerCase();
+    if (!isSelf) {
+        // For updating another user's photo, check scope-based write access
+        const canAccess = await canAccessEmployeeForWrite(db, request, employee.userEmail);
+        if (!canAccess) {
+            return jsonError('Forbidden', 403);
+        }
+    }
     const token = getForwardedBearerFromRequest(request);
     const authUrl = getAuthUrlFromRequest(request);
-    // Check if this is the current user updating their own photo
-    const isSelf = employee.userEmail.toLowerCase() === user.email.toLowerCase();
-    if (isSelf) {
-        // User can update their own photo via /me endpoint
-        const response = await fetch(`${authUrl}/me`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ profile_picture_url: profilePictureUrl }),
-        });
-        if (!response.ok) {
-            const data = await response.json().catch(() => ({}));
-            return jsonError(data?.detail || data?.error || 'Failed to update profile picture', response.status);
-        }
-        const data = await response.json().catch(() => ({}));
-        return NextResponse.json({
-            success: true,
-            profile_picture_url: data.profile_picture_url ?? profilePictureUrl,
-        });
-    }
-    // For updating another user's photo, require admin
-    const isAdmin = user.roles?.includes('admin') || user.sub === 'admin';
-    if (!isAdmin) {
-        return jsonError('You can only update your own profile picture', 403);
-    }
-    // Admin updating another user's photo
-    const response = await fetch(`${authUrl}/users/${encodeURIComponent(employee.userEmail)}`, {
+    // Use /me endpoint for self, /users/{email} for others
+    const endpoint = isSelf ? '/me' : `/users/${encodeURIComponent(employee.userEmail)}`;
+    const response = await fetch(`${authUrl}${endpoint}`, {
         method: 'PUT',
         headers: {
             'Content-Type': 'application/json',
