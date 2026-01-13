@@ -22,6 +22,7 @@ type UiEntityListSpec = {
         id: string;
         desc?: boolean;
     }>;
+    sortWhitelist?: string[];
 };
 export type DataTableColumn = {
     key: string;
@@ -34,8 +35,9 @@ export type DataTableColumn = {
     reference?: any;
     render?: (value: unknown, row: Record<string, unknown>, index: number) => any;
 };
-export declare function useEntityDataTableColumns({ listSpec, isMobile, customRenderers, }: {
+export declare function useEntityDataTableColumns({ listSpec, fieldsMap, isMobile, customRenderers, }: {
     listSpec: UiEntityListSpec | null;
+    fieldsMap?: Record<string, any> | null;
     isMobile: boolean;
     customRenderers?: Record<string, DataTableColumn['render']>;
 }): DataTableColumn[];

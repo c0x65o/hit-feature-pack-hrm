@@ -1,8 +1,7 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
-import { useUi } from '@hit/ui-kit';
-import { useServerDataTableState } from '@hit/ui-kit/hooks/useServerDataTableState';
+import { useServerDataTableState, useUi } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataTableColumns } from './entityTable';
 import { useEntityDataSource } from './entityDataSources';
@@ -63,6 +62,7 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const pagination = data?.pagination;
     const columns = useEntityDataTableColumns({
         listSpec: listSpec,
+        fieldsMap: uiSpec?.fields || null,
         isMobile,
     });
     const effectiveInitialColumnVisibility = useMemo(() => {

@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useUi } from '@hit/ui-kit';
-import { useServerDataTableState } from '@hit/ui-kit/hooks/useServerDataTableState';
+import { useServerDataTableState, useUi } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataTableColumns } from './entityTable';
 import { useEntityDataSource } from './entityDataSources';
@@ -102,6 +101,7 @@ export function EntityListPage({
 
   const columns = useEntityDataTableColumns({
     listSpec: listSpec as any,
+    fieldsMap: (uiSpec as any)?.fields || null,
     isMobile,
   });
 
