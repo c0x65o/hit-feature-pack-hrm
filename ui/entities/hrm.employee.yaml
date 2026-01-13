@@ -51,46 +51,16 @@ entities:
         createdAt: false
         updatedAt: false
       columns:
-        - key: userEmail
-          label: User
-          sortable: true
-          filterType: string
-        - key: preferredName
-          label: Preferred
-          sortable: true
-          filterType: string
-        - key: firstName
-          label: First
-          sortable: true
-          filterType: string
-        - key: lastName
-          label: Last
-          sortable: true
-          filterType: string
-        - key: phone
-          label: Phone
-          sortable: true
-          filterType: string
-        - key: city
-          label: City
-          sortable: true
-          filterType: string
-        - key: state
-          label: State
-          sortable: true
-          filterType: string
-        - key: country
-          label: Country
-          sortable: true
-          filterType: string
-        - key: createdAt
-          label: Created
-          sortable: true
-          filterType: date
-        - key: updatedAt
-          label: Updated
-          sortable: true
-          filterType: date
+        - userEmail
+        - preferredName
+        - firstName
+        - lastName
+        - phone
+        - city
+        - state
+        - country
+        - createdAt
+        - updatedAt
 
     form:
       sections:
