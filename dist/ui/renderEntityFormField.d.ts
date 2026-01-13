@@ -13,7 +13,9 @@ export type RenderEntityFormFieldArgs = {
     required?: boolean;
     ui: {
         Input: any;
+        TextArea?: any;
         Select: any;
+        Checkbox?: any;
         Autocomplete: any;
     };
     optionSources: Record<string, OptionSourceConfig | undefined>;

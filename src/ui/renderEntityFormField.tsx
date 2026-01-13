@@ -17,7 +17,9 @@ export type RenderEntityFormFieldArgs = {
   required?: boolean;
   ui: {
     Input: any;
+    TextArea?: any;
     Select: any;
+    Checkbox?: any;
     Autocomplete: any;
   };
   optionSources: Record<string, OptionSourceConfig | undefined>;
@@ -47,7 +49,7 @@ export function renderEntityFormField({
   referenceRenderers,
 }: RenderEntityFormFieldArgs) {
   const spec = fieldSpec && typeof fieldSpec === 'object' ? fieldSpec : {};
-  const type = String(spec.type || 'text');
+  const type = String(spec.type || 'text').trim().toLowerCase();
   const label = String(spec.label || keyName);
   const placeholder = typeof spec.placeholder === 'string' ? String(spec.placeholder) : undefined;
   const readOnly = Boolean(spec.readOnly);
@@ -55,7 +57,8 @@ export function renderEntityFormField({
   if (type === 'select') {
     const src = typeof spec.optionSource === 'string' ? String(spec.optionSource) : '';
     const cfg = src && optionSources[src] ? optionSources[src] : undefined;
-    const options = cfg?.options || [{ value: '', label: 'Select…' }];
+    const inline = Array.isArray(spec.options) ? spec.options : null;
+    const options = (inline && inline.length > 0) ? inline : (cfg?.options || [{ value: '', label: 'Select…' }]);
     return (
       <ui.Select
         key={keyName}
@@ -102,13 +105,59 @@ export function renderEntityFormField({
     );
   }
 
-  const inputType = type === 'email' ? 'email' : type === 'secret' ? 'password' : 'text';
+  if (type === 'textarea' && ui.TextArea) {
+    return (
+      <ui.TextArea
+        key={keyName}
+        label={label}
+        value={value}
+        onChange={(v: string) => setValue(v)}
+        placeholder={placeholder}
+        error={error}
+        required={Boolean(required)}
+        disabled={readOnly}
+      />
+    );
+  }
+
+  if (type === 'boolean' && ui.Checkbox) {
+    const checked = value === 'true' || value === '1' || value.toLowerCase?.() === 'true';
+    return (
+      <ui.Checkbox
+        key={keyName}
+        label={label}
+        checked={Boolean(checked)}
+        onChange={(v: boolean) => setValue(v ? 'true' : 'false')}
+        disabled={readOnly}
+      />
+    );
+  }
+
+  const inputType =
+    type === 'email'
+      ? 'email'
+      : type === 'secret' || type === 'password'
+        ? 'password'
+        : type === 'phone'
+          ? 'tel'
+          : type === 'number'
+            ? 'number'
+            : type === 'date'
+              ? 'date'
+              : type === 'datetime'
+                ? 'datetime-local'
+                : 'text';
+
+  const inputValue =
+    inputType === 'datetime-local' && typeof value === 'string' && value.includes('T')
+      ? value.slice(0, 16)
+      : value;
   return (
     <ui.Input
       key={keyName}
       label={label}
       type={inputType as any}
-      value={value}
+      value={inputValue}
       onChange={(v: string) => setValue(v)}
       placeholder={placeholder}
       error={error}

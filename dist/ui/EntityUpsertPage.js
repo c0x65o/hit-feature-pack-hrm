@@ -15,7 +15,7 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
     const recordId = id === 'new' ? undefined : id;
     const uiSpec = useEntityUiSpec(entityKey);
     const ds = useEntityDataSource(entityKey);
-    const { Page, Card, Button, Spinner, Alert, Input, Select, Autocomplete } = useUi();
+    const { Page, Card, Button, Spinner, Alert, Input, Select, Autocomplete, TextArea, Checkbox } = useUi();
     const [values, setValues] = useState({});
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -87,9 +87,23 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                 const fs = asRecord(fieldsMap?.[k]) || {};
                 if (fs.virtual)
                     continue;
-                const raw = values?.[k] ?? '';
-                // Convert empty to null for non-required fields (matches HRM APIs)
-                payload[k] = raw === '' ? null : raw;
+                const raw = (values?.[k] ?? '').toString();
+                const t = String(fs.type || 'text').trim().toLowerCase();
+                const v = raw.trim();
+                if (!v) {
+                    payload[k] = null;
+                    continue;
+                }
+                if (t === 'number') {
+                    const n = Number(v);
+                    payload[k] = Number.isFinite(n) ? n : v;
+                    continue;
+                }
+                if (t === 'boolean') {
+                    payload[k] = v === 'true' || v === '1';
+                    continue;
+                }
+                payload[k] = v;
             }
             await upsert.update(recordId, payload);
             navigate(detailHrefForId(recordId));
@@ -120,7 +134,7 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                                             setValue: (v) => setValues((prev) => ({ ...(prev || {}), [k]: v })),
                                             error: undefined,
                                             required: isRequired(k),
-                                            ui: { Input, Select, Autocomplete },
+                                            ui: { Input, Select, Autocomplete, TextArea, Checkbox },
                                             optionSources: registries.optionSources || {},
                                             referenceRenderers: registries.referenceRenderers || {},
                                         })) })] }, `sec-${idx}`));
