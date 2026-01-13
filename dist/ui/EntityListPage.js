@@ -2,8 +2,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
 import { useServerDataTableState, useUi } from '@hit/ui-kit';
+import { useEntityDataTableColumns } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
-import { useEntityDataTableColumns } from './entityTable';
 import { useEntityDataSource } from './entityDataSources';
 export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const { Page, Card, DataTable, Alert, Spinner } = useUi();

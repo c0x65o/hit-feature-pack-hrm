@@ -2,8 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useServerDataTableState, useUi } from '@hit/ui-kit';
+import { useEntityDataTableColumns } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
-import { useEntityDataTableColumns } from './entityTable';
 import { useEntityDataSource } from './entityDataSources';
 
 type ListSpec = {
@@ -16,7 +16,6 @@ type ListSpec = {
   initialColumnVisibility?: Record<string, boolean>;
   initialSorting?: Array<{ id: string; desc?: boolean }>;
   columns?: any;
-  mobileColumnKeys?: string[];
 };
 
 export function EntityListPage({

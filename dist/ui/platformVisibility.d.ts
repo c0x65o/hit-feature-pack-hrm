@@ -1,4 +1,2 @@
-export type HitPlatform = 'web' | 'mobile';
-export declare function getHitPlatform(): HitPlatform;
-export declare function filterUiSpecByPlatform<T>(node: T, platform: HitPlatform): T;
+export { filterUiSpecByPlatform, getHitPlatform, type HitPlatform } from '@hit/ui-kit';
 //# sourceMappingURL=platformVisibility.d.ts.map

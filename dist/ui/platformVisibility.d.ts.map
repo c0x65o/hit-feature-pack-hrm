@@ -1,1 +1,1 @@
-{"version":3,"file":"platformVisibility.d.ts","sourceRoot":"","sources":["../../src/ui/platformVisibility.ts"],"names":[],"mappings":"AAEA,MAAM,MAAM,WAAW,GAAG,KAAK,GAAG,QAAQ,CAAC;AAE3C,wBAAgB,cAAc,IAAI,WAAW,CAS5C;AAsBD,wBAAgB,sBAAsB,CAAC,CAAC,EAAE,IAAI,EAAE,CAAC,EAAE,QAAQ,EAAE,WAAW,GAAG,CAAC,CAoB3E"}
+{"version":3,"file":"platformVisibility.d.ts","sourceRoot":"","sources":["../../src/ui/platformVisibility.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,sBAAsB,EAAE,cAAc,EAAE,KAAK,WAAW,EAAE,MAAM,aAAa,CAAC"}
