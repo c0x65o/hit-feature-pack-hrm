@@ -1,0 +1,150 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getStoredToken } from './authToken';
+
+export type ListQueryArgs = {
+  page: number;
+  pageSize: number;
+  search?: string;
+  filters?: any[];
+  filterMode?: 'all' | 'any';
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+export type EntityListResult = {
+  data: any;
+  loading: boolean;
+  refetch: () => Promise<any> | void;
+  deleteItem?: (id: string) => Promise<any>;
+};
+
+export type EntityDetailResult = {
+  record: any;
+  loading: boolean;
+  deleteItem?: (id: string) => Promise<any>;
+};
+
+export type EntityUpsertResult = {
+  record: any;
+  loading: boolean;
+  create: (payload: any) => Promise<any>;
+  update: (id: string, payload: any) => Promise<any>;
+};
+
+export type EntityFormRegistries = {
+  optionSources: Record<string, any>;
+  referenceRenderers: Record<string, any>;
+  myOrgScope?: any;
+  loading?: Record<string, boolean>;
+};
+
+export type EntityDataSource = {
+  useList?: (args: ListQueryArgs) => EntityListResult;
+  useDetail?: (args: { id: string }) => EntityDetailResult;
+  useUpsert?: (args: { id?: string }) => EntityUpsertResult;
+  useFormRegistries?: () => EntityFormRegistries;
+};
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function useHrmEmployeesList(args: ListQueryArgs) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qp = new URLSearchParams();
+      qp.set('page', String(args.page || 1));
+      qp.set('pageSize', String(args.pageSize || 25));
+      if (args.search) qp.set('search', String(args.search));
+      if (args.sortBy) qp.set('sortBy', String(args.sortBy));
+      if (args.sortOrder) qp.set('sortOrder', String(args.sortOrder));
+      const res = await fetch(`/api/hrm/employees?${qp.toString()}`, { headers: authHeaders(), credentials: 'include' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load employees');
+      setData(json);
+    } finally {
+      setLoading(false);
+    }
+  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  return { data, loading, refetch: fetchData };
+}
+
+function useHrmEmployeeDetail(id: string) {
+  const [record, setRecord] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/hrm/employees/${encodeURIComponent(id)}`, { headers: authHeaders(), credentials: 'include' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load employee');
+      setRecord(json);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  return { record, loading, refetch: fetchData };
+}
+
+export function useEntityDataSource(entityKey: string): EntityDataSource | null {
+  if (entityKey !== 'hrm.employee') return null;
+
+  return {
+    useList: (args) => {
+      const { data, loading, refetch } = useHrmEmployeesList(args);
+      return { data, loading, refetch };
+    },
+    useDetail: ({ id }) => {
+      const { record, loading } = useHrmEmployeeDetail(id);
+      return { record, loading };
+    },
+    useUpsert: ({ id }) => {
+      const recordId = id || '';
+      const detail = useHrmEmployeeDetail(recordId);
+      return {
+        record: detail.record,
+        loading: detail.loading,
+        create: async () => {
+          throw new Error('Employees are auto-provisioned; creation is not supported.');
+        },
+        update: async (rid: string, payload: any) => {
+          const res = await fetch(`/api/hrm/employees/${encodeURIComponent(rid)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            credentials: 'include',
+            body: JSON.stringify(payload || {}),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to update employee');
+          // refresh detail cache
+          await detail.refetch();
+          return json;
+        },
+      };
+    },
+    useFormRegistries: () => ({
+      optionSources: {},
+      referenceRenderers: {},
+    }),
+  };
+}
+

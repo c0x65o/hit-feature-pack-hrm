@@ -5,7 +5,9 @@
  */
 
 // Pages
-export { Employees, default as EmployeesPage } from './pages/Employees';
+export { EntityList, default as EntityListPage } from './pages/EntityList';
+export { EntityDetail, default as EntityDetailPage } from './pages/EntityDetail';
+export { EntityEdit, default as EntityEditPage } from './pages/EntityEdit';
 
 // Navigation config
 export { navContributions as nav } from './nav';

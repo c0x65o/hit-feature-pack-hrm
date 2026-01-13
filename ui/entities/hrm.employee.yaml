@@ -1,0 +1,159 @@
+version: 1
+
+entities:
+  hrm.employee:
+    meta:
+      titleSingular: Employee
+      titlePlural: Employees
+      descriptionPlural: HRM employee directory
+      routes:
+        root: /hrm
+        list: /hrm/employees
+        detail: /hrm/employees/{id}
+        edit: /hrm/employees/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: Employees, href: /hrm/employees }
+      actions:
+        editLabel: Edit Employee
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+
+    storage:
+      # Drizzle table export name (re-exported by the host app's lib/schema.ts)
+      drizzleTable: employees
+
+    list:
+      tableId: hrm.employees
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort:
+        sortBy: lastName
+        sortOrder: asc
+      sortWhitelist:
+        - userEmail
+        - firstName
+        - lastName
+        - preferredName
+        - phone
+        - city
+        - state
+        - country
+        - divisionName
+        - departmentName
+        - locationName
+        - createdAt
+        - updatedAt
+      initialColumnVisibility:
+        phone: false
+        city: false
+        state: false
+        country: false
+        divisionName: false
+        departmentName: false
+        locationName: false
+        createdAt: false
+        updatedAt: false
+      columns:
+        - key: userEmail
+          label: User
+          sortable: true
+          filterType: string
+        - key: preferredName
+          label: Preferred
+          sortable: true
+          filterType: string
+        - key: firstName
+          label: First
+          sortable: true
+          filterType: string
+        - key: lastName
+          label: Last
+          sortable: true
+          filterType: string
+        - key: phone
+          label: Phone
+          sortable: true
+          filterType: string
+        - key: city
+          label: City
+          sortable: true
+          filterType: string
+        - key: state
+          label: State
+          sortable: true
+          filterType: string
+        - key: country
+          label: Country
+          sortable: true
+          filterType: string
+        - key: divisionName
+          label: Division
+          sortable: true
+          filterType: string
+        - key: departmentName
+          label: Department
+          sortable: true
+          filterType: string
+        - key: locationName
+          label: Location
+          sortable: true
+          filterType: string
+        - key: createdAt
+          label: Created
+          sortable: true
+          filterType: date
+        - key: updatedAt
+          label: Updated
+          sortable: true
+          filterType: date
+
+    form:
+      sections:
+        - id: basics
+          title: Basics
+          layout: { columns: 2 }
+          fields: [userEmail, firstName, lastName, preferredName, phone]
+        - id: address
+          title: Address
+          layout: { columns: 2 }
+          fields: [address1, address2, city, state, postalCode, country]
+
+    fields:
+      id: { type: text, label: ID }
+      userEmail: { type: email, label: User Email, readOnly: true }
+      firstName: { type: text, label: First Name, required: true }
+      lastName: { type: text, label: Last Name, required: true }
+      preferredName: { type: text, label: Preferred Name }
+      phone: { type: text, label: Phone }
+      address1: { type: text, label: Address Line 1 }
+      address2: { type: text, label: Address Line 2 }
+      city: { type: text, label: City }
+      state: { type: text, label: State/Province }
+      postalCode: { type: text, label: Postal Code }
+      country: { type: text, label: Country }
+      divisionName: { type: text, label: Division, virtual: true }
+      departmentName: { type: text, label: Department, virtual: true }
+      locationName: { type: text, label: Location, virtual: true }
+      createdAt: { type: datetime, label: Created, virtual: true }
+      updatedAt: { type: datetime, label: Updated, virtual: true }
+
+    detail:
+      summaryTitle: Details
+      summaryFields:
+        - userEmail
+        - preferredName
+        - firstName
+        - lastName
+        - phone
+        - address1
+        - address2
+        - city
+        - state
+        - postalCode
+        - country
+        - divisionName
+        - departmentName
+        - locationName
+        - createdAt
+        - updatedAt

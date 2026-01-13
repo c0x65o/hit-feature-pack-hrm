@@ -46,20 +46,23 @@ api:
 # Routes (pre-1.0: start Employees UI)
 routes:
   - path: /hrm/employees
-    page: Employees
+    page: EntityList
     roles: []
     default_roles_allow: [admin]
     authz: { entity: employees, verb: read }
+    params: { entityKey: hrm.employee }
   - path: /hrm/employees/[id]
-    page: EmployeeDetail
+    page: EntityDetail
     roles: []
     default_roles_allow: [admin]
     authz: { entity: employees, verb: read }
+    params: { entityKey: hrm.employee }
   - path: /hrm/employees/[id]/edit
-    page: EmployeeEdit
+    page: EntityEdit
     roles: []
     default_roles_allow: [admin]
     authz: { entity: employees, verb: write }
+    params: { entityKey: hrm.employee }
 
 nav:
   - id: hrm

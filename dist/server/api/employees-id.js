@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, eq, inArray, or } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
@@ -87,7 +87,37 @@ export async function GET(request) {
     if (!canAccess) {
         return jsonError('Employee not found', 404);
     }
-    return NextResponse.json(employee);
+    // Enrich with LDD display names (best-effort; org tables may not exist yet).
+    let divisionName = null;
+    let departmentName = null;
+    let locationName = null;
+    try {
+        const email = String(employee.userEmail || '').trim();
+        if (email) {
+            const res = await db.execute(sql `
+        SELECT 
+          d.name as division_name,
+          dp.name as department_name,
+          l.name as location_name
+        FROM org_user_assignments a
+        LEFT JOIN org_divisions d ON d.id = a.division_id
+        LEFT JOIN org_departments dp ON dp.id = a.department_id
+        LEFT JOIN org_locations l ON l.id = a.location_id
+        WHERE a.user_key = ${email}
+        LIMIT 1
+      `);
+            const r = (res.rows?.[0] || null);
+            if (r) {
+                divisionName = r.division_name ?? null;
+                departmentName = r.department_name ?? null;
+                locationName = r.location_name ?? null;
+            }
+        }
+    }
+    catch {
+        // ignore enrichment errors
+    }
+    return NextResponse.json({ ...employee, divisionName, departmentName, locationName });
 }
 /**
  * PUT /api/hrm/employees/[id]
