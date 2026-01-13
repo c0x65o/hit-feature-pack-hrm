@@ -28,7 +28,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       # Mobile cards use these keys (in order) instead of auto-picking fields like city/country.
-      mobileColumnKeys: [preferredName, firstName, userEmail, lastName]
+      mobileColumnKeys: [preferredName, firstName, lastName, userEmail]
       initialSort:
         sortBy: lastName
         sortOrder: asc
@@ -109,7 +109,7 @@ entities:
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
       preferredName: { type: text, label: Preferred Name }
-      phone: { type: text, label: Phone }
+      phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
       address2: { type: text, label: Address Line 2 }
       city: { type: text, label: City }
