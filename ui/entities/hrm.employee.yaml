@@ -27,8 +27,6 @@ entities:
       tableId: hrm.employees
       uiStateVersion: 1
       pageSize: 25
-      # Mobile cards use these keys (in order) instead of auto-picking fields like city/country.
-      mobileColumnKeys: [preferredName, firstName, lastName, userEmail]
       initialSort:
         sortBy: lastName
         sortOrder: asc
