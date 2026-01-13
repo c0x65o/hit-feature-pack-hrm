@@ -28,6 +28,6 @@ export function renderEntityFormField({ keyName, fieldSpec, value, setValue, err
         }
         return (_jsx(ui.Input, { label: label, value: value, onChange: (v) => setValue(v), placeholder: placeholder, error: error, required: Boolean(required), disabled: readOnly }, keyName));
     }
-    const inputType = type === 'email' ? 'email' : 'text';
+    const inputType = type === 'email' ? 'email' : type === 'secret' ? 'password' : 'text';
     return (_jsx(ui.Input, { label: label, type: inputType, value: value, onChange: (v) => setValue(v), placeholder: placeholder, error: error, required: Boolean(required), disabled: readOnly }, keyName));
 }
