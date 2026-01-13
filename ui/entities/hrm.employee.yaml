@@ -28,7 +28,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       # Mobile cards use these keys (in order) instead of auto-picking fields like city/country.
-      mobileColumnKeys: [preferredName, firstName, lastName]
+      mobileColumnKeys: [preferredName, firstName, userEmail, lastName]
       initialSort:
         sortBy: lastName
         sortOrder: asc
