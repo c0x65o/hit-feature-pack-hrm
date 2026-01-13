@@ -1,3 +1,3 @@
-export { Employees, default as EmployeesPage } from './Employees';
-export { EmployeeDetail, default as EmployeeDetailPage } from './EmployeeDetail';
-export { EmployeeEdit, default as EmployeeEditPage } from './EmployeeEdit';
+export { EntityList, default as EntityListPage } from './EntityList';
+export { EntityDetail, default as EntityDetailPage } from './EntityDetail';
+export { EntityEdit, default as EntityEditPage } from './EntityEdit';

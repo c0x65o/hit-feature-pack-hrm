@@ -39,9 +39,6 @@ entities:
         - city
         - state
         - country
-        - divisionName
-        - departmentName
-        - locationName
         - createdAt
         - updatedAt
       initialColumnVisibility:
@@ -49,9 +46,6 @@ entities:
         city: false
         state: false
         country: false
-        divisionName: false
-        departmentName: false
-        locationName: false
         createdAt: false
         updatedAt: false
       columns:
@@ -85,18 +79,6 @@ entities:
           filterType: string
         - key: country
           label: Country
-          sortable: true
-          filterType: string
-        - key: divisionName
-          label: Division
-          sortable: true
-          filterType: string
-        - key: departmentName
-          label: Department
-          sortable: true
-          filterType: string
-        - key: locationName
-          label: Location
           sortable: true
           filterType: string
         - key: createdAt
