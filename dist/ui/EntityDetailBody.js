@@ -3,6 +3,7 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo } from 'react';
 import { useUi } from '@hit/ui-kit';
 import { useEntityResolver } from '@hit/ui-kit';
+import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
 function asRecord(v) {
     return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
 }
@@ -51,12 +52,20 @@ function DetailField({ uiSpec, record, fieldKey }) {
         return null;
     return (_jsxs("div", { children: [_jsx("div", { className: "text-sm text-gray-400 mb-1", children: label }), _jsx("div", { children: String(raw) })] }, fieldKey));
 }
-export function EntityDetailBody({ entityKey, uiSpec, record, }) {
+export function EntityDetailBody({ entityKey, uiSpec, record, navigate, }) {
     const { Card } = useUi();
     const detailSpec = asRecord(uiSpec?.detail) || {};
+    const { linkedEntityTabs } = splitLinkedEntityTabsExtra(detailSpec.extras);
     const summaryFields = useMemo(() => {
         const explicit = Array.isArray(detailSpec.summaryFields) ? detailSpec.summaryFields.map(String) : null;
         return explicit && explicit.length > 0 ? explicit : [];
     }, [detailSpec.summaryFields]);
-    return (_jsxs(Card, { children: [_jsx("h2", { className: "text-lg font-semibold mb-4", children: String(detailSpec.summaryTitle || 'Details') }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: summaryFields.map((k) => (_jsx(DetailField, { uiSpec: uiSpec, record: record, fieldKey: String(k) }, `${entityKey}-${k}`))) })] }));
+    const inner = (_jsxs(Card, { children: [_jsx("h2", { className: "text-lg font-semibold mb-4", children: String(detailSpec.summaryTitle || 'Details') }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: summaryFields.map((k) => (_jsx(DetailField, { uiSpec: uiSpec, record: record, fieldKey: String(k) }, `${entityKey}-${k}`))) })] }));
+    return wrapWithLinkedEntityTabsIfConfigured({
+        linkedEntityTabs,
+        entityKey,
+        record,
+        navigate,
+        overview: inner,
+    });
 }
