@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { useUi } from '@hit/ui-kit';
 import { useEntityResolver } from '@hit/ui-kit';
+import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
 
 function asRecord(v: unknown): Record<string, any> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as any) : null;
@@ -71,6 +72,7 @@ export function EntityDetailBody({
   entityKey,
   uiSpec,
   record,
+  navigate,
 }: {
   entityKey: string;
   uiSpec: any;
@@ -79,12 +81,13 @@ export function EntityDetailBody({
 }) {
   const { Card } = useUi();
   const detailSpec = asRecord(uiSpec?.detail) || {};
+  const { linkedEntityTabs } = splitLinkedEntityTabsExtra((detailSpec as any).extras);
   const summaryFields = useMemo(() => {
     const explicit = Array.isArray(detailSpec.summaryFields) ? detailSpec.summaryFields.map(String) : null;
     return explicit && explicit.length > 0 ? explicit : [];
   }, [detailSpec.summaryFields]);
 
-  return (
+  const inner = (
     <Card>
       <h2 className="text-lg font-semibold mb-4">{String(detailSpec.summaryTitle || 'Details')}</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -94,5 +97,13 @@ export function EntityDetailBody({
       </div>
     </Card>
   );
+
+  return wrapWithLinkedEntityTabsIfConfigured({
+    linkedEntityTabs,
+    entityKey,
+    record,
+    navigate,
+    overview: inner,
+  });
 }
 

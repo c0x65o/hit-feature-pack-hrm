@@ -54,6 +54,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
+    "@hit/feature-pack-form-core": "*",
     "@hit/sdk": "*",
     "@hit/ui-kit": "*",
     "drizzle-orm": "^0.38.0",
@@ -63,6 +64,9 @@
     "zod": "^4.3.2"
   },
   "peerDependenciesMeta": {
+    "@hit/feature-pack-form-core": {
+      "optional": true
+    },
     "@hit/sdk": {
       "optional": true
     },
@@ -72,6 +76,7 @@
   },
   "devDependencies": {
     "@hit/feature-pack-stubs": "file:../../packages/hit-feature-pack-stubs",
+    "@hit/feature-pack-form-core": "file:../core/hit-feature-pack-form-core",
     "@hit/sdk": "file:../../hit-sdks/hit-sdk-typescript",
     "@hit/ui-kit": "file:../../packages/hit-ui-kit-ts",
     "@types/node": "^20",
