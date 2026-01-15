@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm';
+import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { employees } from '@/lib/feature-pack-schemas';
 function toTitle(word) {
     const w = String(word || '').trim();
@@ -25,11 +25,6 @@ export function deriveEmployeeNamesFromEmail(email) {
     return { firstName: 'Employee', lastName: 'User' };
 }
 export function getAuthUrlFromRequest(request) {
-    // Prefer direct auth module URL when available (avoids "server calls itself via ingress" failures).
-    // Fall back to the app-owned auth proxy otherwise.
-    const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
-    if (envUrl && String(envUrl).trim())
-        return String(envUrl).trim().replace(/\/$/, '');
     // IMPORTANT: server-side fetch() requires an absolute URL.
     const origin = new URL(request.url).origin;
     return `${origin}/api/proxy/auth`;
@@ -81,4 +76,48 @@ export async function ensureEmployeesExistForEmails(params) {
         .onConflictDoNothing({ target: employees.userEmail })
         .returning({ userEmail: employees.userEmail });
     return { ensured: Array.isArray(inserted) ? inserted.length : 0 };
+}
+export async function syncEmployeesWithAuthUsers(params) {
+    const normalized = (params.users || [])
+        .map((u) => {
+        const email = String(u?.email || '').trim().toLowerCase();
+        if (!email)
+            return null;
+        const explicitActive = u?.isActive;
+        const locked = u?.locked === true;
+        const isActive = explicitActive === undefined || explicitActive === null ? !locked : Boolean(explicitActive);
+        return { email, isActive };
+    })
+        .filter(Boolean);
+    const activeEmails = Array.from(new Set(normalized.filter((u) => u.isActive).map((u) => u.email)));
+    const inactiveEmails = Array.from(new Set(normalized.filter((u) => !u.isActive).map((u) => u.email)));
+    const allEmails = Array.from(new Set([...activeEmails, ...inactiveEmails]));
+    const { ensured } = await ensureEmployeesExistForEmails({ db: params.db, emails: allEmails });
+    let reactivated = 0;
+    if (activeEmails.length > 0) {
+        const updated = await params.db
+            .update(employees)
+            .set({ isActive: true })
+            .where(and(inArray(employees.userEmail, activeEmails), eq(employees.isActive, false)))
+            .returning({ userEmail: employees.userEmail });
+        reactivated = Array.isArray(updated) ? updated.length : 0;
+    }
+    let deactivated = 0;
+    if (inactiveEmails.length > 0) {
+        const updated = await params.db
+            .update(employees)
+            .set({ isActive: false })
+            .where(and(inArray(employees.userEmail, inactiveEmails), eq(employees.isActive, true)))
+            .returning({ userEmail: employees.userEmail });
+        deactivated += Array.isArray(updated) ? updated.length : 0;
+    }
+    if (params.allowDeactivation && allEmails.length > 0) {
+        const updated = await params.db
+            .update(employees)
+            .set({ isActive: false })
+            .where(and(notInArray(employees.userEmail, allEmails), eq(employees.isActive, true)))
+            .returning({ userEmail: employees.userEmail });
+        deactivated += Array.isArray(updated) ? updated.length : 0;
+    }
+    return { ensured, reactivated, deactivated };
 }

@@ -235,6 +235,23 @@ export declare const employees: import("drizzle-orm/pg-core").PgTableWithColumns
         }, {}, {
             length: 100;
         }>;
+        isActive: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_active";
+            tableName: "hrm_employees";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         createdAt: import("drizzle-orm/pg-core").PgColumn<{
             name: "created_at";
             tableName: "hrm_employees";
@@ -499,6 +516,23 @@ export declare const EmployeeSchema: import("drizzle-zod").BuildSchema<"select",
     }, {}, {
         length: 100;
     }>;
+    isActive: import("drizzle-orm/pg-core").PgColumn<{
+        name: "is_active";
+        tableName: "hrm_employees";
+        dataType: "boolean";
+        columnType: "PgBoolean";
+        data: boolean;
+        driverParam: boolean;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     createdAt: import("drizzle-orm/pg-core").PgColumn<{
         name: "created_at";
         tableName: "hrm_employees";
@@ -761,6 +795,23 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
     }, {}, {
         length: 100;
     }>;
+    isActive: import("drizzle-orm/pg-core").PgColumn<{
+        name: "is_active";
+        tableName: "hrm_employees";
+        dataType: "boolean";
+        columnType: "PgBoolean";
+        data: boolean;
+        driverParam: boolean;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     createdAt: import("drizzle-orm/pg-core").PgColumn<{
         name: "created_at";
         tableName: "hrm_employees";
@@ -807,6 +858,7 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
     state: z.ZodOptional<z.ZodString>;
     postalCode: z.ZodOptional<z.ZodString>;
     country: z.ZodOptional<z.ZodString>;
+    isActive: z.ZodOptional<z.ZodBoolean>;
 }>;
 export type Employee = typeof employees.$inferSelect;
 export type InsertEmployee = typeof employees.$inferInsert;

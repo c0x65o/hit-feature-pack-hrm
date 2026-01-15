@@ -11,4 +11,19 @@ export declare function ensureEmployeesExistForEmails(params: {
 }): Promise<{
     ensured: number;
 }>;
+type AuthDirectoryUser = {
+    email?: string | null;
+    locked?: boolean | null;
+    isActive?: boolean | null;
+};
+export declare function syncEmployeesWithAuthUsers(params: {
+    db: any;
+    users: AuthDirectoryUser[];
+    allowDeactivation?: boolean;
+}): Promise<{
+    ensured: number;
+    reactivated: number;
+    deactivated: number;
+}>;
+export {};
 //# sourceMappingURL=employee-provisioning.d.ts.map

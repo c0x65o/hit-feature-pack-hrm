@@ -3,7 +3,8 @@ import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
-import { ensureEmployeesExistForEmails, getAuthUrlFromRequest, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
+import { getAuthUrlFromRequest, getForwardedBearerFromRequest, syncEmployeesWithAuthUsers, } from '../lib/employee-provisioning';
+import { checkHrmAction } from '../lib/require-action';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -60,173 +61,237 @@ export async function GET(request) {
         authDirectoryStatus: null,
         authUserCount: null,
         ensured: null,
+        reactivated: null,
+        deactivated: null,
         provisioningError: null,
         authUrl: null,
+        authDirectoryPath: null,
+        authDirectorySource: null,
+        authDirectoryLimit: null,
+        allowDeactivation: null,
         bearerPresent: false,
         cookiePresent: Boolean(request.cookies.get('hit_token')?.value),
-        incomingServiceTokenPresent: Boolean(request.headers.get('x-hit-service-token') || request.headers.get('X-HIT-Service-Token')),
         authProxyProxiedFrom: null,
     };
+    const debugEnabled = String(process.env.HIT_AUTH_DEBUG || process.env.HIT_DEBUG || '').trim().toLowerCase() === 'true' ||
+        String(process.env.HIT_AUTH_DEBUG || process.env.HIT_DEBUG || '').trim() === '1';
     try {
         const bearer = getForwardedBearerFromRequest(request);
         provisionMeta.bearerPresent = Boolean(bearer);
-        const headers = { 'Content-Type': 'application/json' };
-        if (bearer)
-            headers['Authorization'] = bearer;
-        // Forward cookies to the proxy as a fallback auth mechanism.
-        // This improves parity when Authorization headers are stripped by an intermediary.
-        const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
-        if (cookieHeader)
-            headers['Cookie'] = cookieHeader;
-        const serviceToken = request.headers.get('x-hit-service-token') ||
-            request.headers.get('X-HIT-Service-Token') ||
-            process.env.HIT_SERVICE_TOKEN ||
-            '';
-        if (serviceToken)
-            headers['X-HIT-Service-Token'] = serviceToken;
-        // When calling the auth module directly, it needs this to fetch the compiled permissions catalog.
-        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
-        const proto = request.headers.get('x-forwarded-proto') || 'https';
-        if (host)
-            headers['X-Frontend-Base-URL'] = `${proto}://${host}`;
         const authUrl = getAuthUrlFromRequest(request);
         provisionMeta.authUrl = authUrl;
-        const res = await fetch(`${authUrl}/directory/users`, {
-            method: 'GET',
-            headers,
-            credentials: 'include',
+        const adminAccess = await checkHrmAction(request, 'auth-core.admin.access');
+        const directoryLimit = 500;
+        let users = [];
+        let allowDeactivation = false;
+        let authDirectoryPath = '/directory/users';
+        let authDirectorySource = 'directory';
+        let authProxyProxiedFrom = null;
+        let authDirectoryStatus = null;
+        let usedAdmin = false;
+        if (adminAccess.ok) {
+            const adminHeaders = { 'Content-Type': 'application/json' };
+            if (bearer)
+                adminHeaders['Authorization'] = bearer;
+            const adminRes = await fetch(`${authUrl}/users`, {
+                method: 'GET',
+                headers: adminHeaders,
+                credentials: 'include',
+            });
+            authDirectoryStatus = adminRes.status;
+            if (adminRes.ok) {
+                const adminUsers = await adminRes.json().catch(() => []);
+                if (!Array.isArray(adminUsers)) {
+                    return NextResponse.json({ error: 'Unexpected auth users response', meta: provisionMeta }, { status: 500 });
+                }
+                users = adminUsers;
+                allowDeactivation = true;
+                authDirectoryPath = '/users';
+                authDirectorySource = 'admin';
+                usedAdmin = true;
+            }
+        }
+        if (!usedAdmin) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (bearer)
+                headers['Authorization'] = bearer;
+            // Forward cookies to the proxy as a fallback auth mechanism.
+            // This improves parity when Authorization headers are stripped by an intermediary.
+            const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
+            if (cookieHeader)
+                headers['Cookie'] = cookieHeader;
+            // When calling the auth module directly, it needs this to fetch the compiled permissions catalog.
+            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+            const proto = request.headers.get('x-forwarded-proto') || 'https';
+            if (host)
+                headers['X-Frontend-Base-URL'] = `${proto}://${host}`;
+            const res = await fetch(`${authUrl}/directory/users?limit=${directoryLimit}`, {
+                method: 'GET',
+                headers,
+                credentials: 'include',
+            });
+            authDirectoryStatus = res.status;
+            authProxyProxiedFrom = res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From');
+            if (debugEnabled) {
+                console.warn('[hrm employees] auth directory response', {
+                    status: res.status,
+                    ok: res.ok,
+                    authUrl,
+                    proxiedFrom: res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From'),
+                });
+            }
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                if (debugEnabled) {
+                    console.warn('[hrm employees] auth directory error body', body);
+                }
+                const baseMsg = body?.error || body?.detail || body?.message || `Auth directory users failed (${res.status})`;
+                const detail = debugEnabled
+                    ? `auth_url=${authUrl} status=${res.status} body=${JSON.stringify(body)}`
+                    : undefined;
+                const msg = debugEnabled && detail ? `${baseMsg} ${detail}` : baseMsg;
+                // IMPORTANT: don't silently return an empty employee list; this hides the root cause.
+                return NextResponse.json({
+                    error: msg,
+                    ...(detail ? { detail } : {}),
+                    // Keep extra info compact but actionable for debugging.
+                    upstream: { path: '/directory/users', status: res.status, body },
+                    meta: provisionMeta,
+                }, { status: res.status });
+            }
+            const directoryUsers = await res.json().catch(() => []);
+            if (!Array.isArray(directoryUsers)) {
+                return NextResponse.json({ error: 'Unexpected auth directory response', meta: provisionMeta }, { status: 500 });
+            }
+            users = directoryUsers;
+            allowDeactivation = false;
+            authDirectoryPath = '/directory/users';
+            authDirectorySource = 'directory';
+        }
+        provisionMeta.authDirectoryStatus = authDirectoryStatus;
+        provisionMeta.authDirectoryPath = authDirectoryPath;
+        provisionMeta.authDirectorySource = authDirectorySource;
+        provisionMeta.authDirectoryLimit = authDirectorySource === 'directory' ? directoryLimit : null;
+        provisionMeta.allowDeactivation = allowDeactivation;
+        provisionMeta.authProxyProxiedFrom = authProxyProxiedFrom;
+        provisionMeta.authUserCount = Array.isArray(users) ? users.length : 0;
+        const { ensured, reactivated, deactivated } = await syncEmployeesWithAuthUsers({
+            db,
+            users,
+            allowDeactivation,
         });
-        provisionMeta.authDirectoryStatus = res.status;
-        provisionMeta.authProxyProxiedFrom = res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From');
-        if (!res.ok) {
-            const body = await res.json().catch(() => ({}));
-            const msg = body?.error || body?.detail || body?.message || `Auth directory users failed (${res.status})`;
-            // IMPORTANT: don't silently return an empty employee list; this hides the root cause.
-            return NextResponse.json({
-                error: msg,
-                // Keep extra info compact but actionable for debugging.
-                upstream: { path: '/directory/users', status: res.status, body },
-                meta: provisionMeta,
-            }, { status: res.status });
-        }
-        const users = await res.json().catch(() => []);
-        if (!Array.isArray(users)) {
-            return NextResponse.json({ error: 'Unexpected auth directory response', meta: provisionMeta }, { status: 500 });
-        }
-        const emails = users
-            .map((u) => String(u?.email || '').trim())
-            .filter(Boolean)
-            .slice(0, 5000);
-        provisionMeta.authUserCount = emails.length;
-        const { ensured } = await ensureEmployeesExistForEmails({ db, emails });
         provisionMeta.ensured = ensured;
+        provisionMeta.reactivated = reactivated;
+        provisionMeta.deactivated = deactivated;
     }
     catch (e) {
         provisionMeta.provisioningError = e?.message ? String(e.message) : 'Provisioning failed';
         return NextResponse.json({ error: provisionMeta.provisioningError, meta: provisionMeta }, { status: 500 });
     }
-    // Resolve scope mode for read access
-    const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb: 'read' });
-    const conditions = [];
-    // Apply scope-based filtering (explicit branching on none/own/ldd/any)
-    if (mode === 'none') {
-        // Explicit deny: return empty results (fail-closed but non-breaking for list UI)
-        conditions.push(sql `false`);
-    }
-    else if (mode === 'own') {
-        // Only show the current user's own employee record
-        conditions.push(eq(employees.userEmail, user.email));
-    }
-    else if (mode === 'ldd') {
-        // Show employees where:
-        // 1. The employee is the current user (own)
-        // 2. The employee's user has matching L/D/D assignments
-        const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
-        // Build condition: own OR matching LDD
-        const ownCondition = eq(employees.userEmail, user.email);
-        // For LDD matching, we need to check if the employee's userEmail has matching assignments
-        // We'll use a subquery to check org_user_assignments
-        const lddParts = [];
-        if (scopeIds.divisionIds.length) {
-            lddParts.push(sql `exists (
+    try {
+        // Resolve scope mode for read access
+        const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb: 'read' });
+        const conditions = [];
+        // Apply scope-based filtering (explicit branching on none/own/ldd/any)
+        if (mode === 'none') {
+            // Explicit deny: return empty results (fail-closed but non-breaking for list UI)
+            conditions.push(sql `false`);
+        }
+        else if (mode === 'own') {
+            // Only show the current user's own employee record
+            conditions.push(eq(employees.userEmail, user.email));
+        }
+        else if (mode === 'ldd') {
+            // Show employees where:
+            // 1. The employee is the current user (own)
+            // 2. The employee's user has matching L/D/D assignments
+            const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
+            // Build condition: own OR matching LDD
+            const ownCondition = eq(employees.userEmail, user.email);
+            // For LDD matching, we need to check if the employee's userEmail has matching assignments
+            // We'll use a subquery to check org_user_assignments
+            const lddParts = [];
+            if (scopeIds.divisionIds.length) {
+                lddParts.push(sql `exists (
           select 1 from ${userOrgAssignments}
           where ${userOrgAssignments.userKey} = ${employees.userEmail}
             and ${userOrgAssignments.divisionId} in (${sql.join(scopeIds.divisionIds.map(id => sql `${id}`), sql `, `)})
         )`);
-        }
-        if (scopeIds.departmentIds.length) {
-            lddParts.push(sql `exists (
+            }
+            if (scopeIds.departmentIds.length) {
+                lddParts.push(sql `exists (
           select 1 from ${userOrgAssignments}
           where ${userOrgAssignments.userKey} = ${employees.userEmail}
             and ${userOrgAssignments.departmentId} in (${sql.join(scopeIds.departmentIds.map(id => sql `${id}`), sql `, `)})
         )`);
-        }
-        if (scopeIds.locationIds.length) {
-            lddParts.push(sql `exists (
+            }
+            if (scopeIds.locationIds.length) {
+                lddParts.push(sql `exists (
           select 1 from ${userOrgAssignments}
           where ${userOrgAssignments.userKey} = ${employees.userEmail}
             and ${userOrgAssignments.locationId} in (${sql.join(scopeIds.locationIds.map(id => sql `${id}`), sql `, `)})
         )`);
+            }
+            if (lddParts.length > 0) {
+                conditions.push(or(ownCondition, or(...lddParts)));
+            }
+            else {
+                // No LDD assignments, fall back to own only
+                conditions.push(ownCondition);
+            }
         }
-        if (lddParts.length > 0) {
-            conditions.push(or(ownCondition, or(...lddParts)));
+        else if (mode === 'any') {
+            // No scoping - show all employees
         }
-        else {
-            // No LDD assignments, fall back to own only
-            conditions.push(ownCondition);
+        if (search) {
+            conditions.push(or(like(employees.userEmail, `%${search}%`), like(employees.firstName, `%${search}%`), like(employees.lastName, `%${search}%`), like(employees.preferredName, `%${search}%`)));
         }
-    }
-    else if (mode === 'any') {
-        // No scoping - show all employees
-    }
-    if (search) {
-        conditions.push(or(like(employees.userEmail, `%${search}%`), like(employees.firstName, `%${search}%`), like(employees.lastName, `%${search}%`), like(employees.preferredName, `%${search}%`)));
-    }
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const sortColumns = {
-        userEmail: employees.userEmail,
-        firstName: employees.firstName,
-        lastName: employees.lastName,
-        preferredName: employees.preferredName,
-        phone: employees.phone,
-        city: employees.city,
-        state: employees.state,
-        country: employees.country,
-        createdAt: employees.createdAt,
-        updatedAt: employees.updatedAt,
-    };
-    const orderCol = sortColumns[sortBy] ?? employees.lastName;
-    const orderDir = sortOrder === 'desc' ? desc(orderCol) : asc(orderCol);
-    const countQuery = db.select({ count: sql `count(*)` }).from(employees);
-    const countRes = whereClause ? await countQuery.where(whereClause) : await countQuery;
-    const total = Number(countRes[0]?.count || 0);
-    const baseQuery = db
-        .select({
-        id: employees.id,
-        userEmail: employees.userEmail,
-        firstName: employees.firstName,
-        lastName: employees.lastName,
-        preferredName: employees.preferredName,
-        phone: employees.phone,
-        city: employees.city,
-        state: employees.state,
-        country: employees.country,
-        createdAt: employees.createdAt,
-        updatedAt: employees.updatedAt,
-    })
-        .from(employees);
-    const employeeRows = whereClause
-        ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)
-        : await baseQuery.orderBy(orderDir).limit(pageSize).offset(offset);
-    // Enrich with LDD data using raw SQL query (org tables are from auth-core)
-    const userEmails = employeeRows.map((e) => e.userEmail);
-    const lddMap = {};
-    if (userEmails.length > 0) {
-        try {
-            // Use IN clause with sql.join for proper array parameter handling
-            // ANY(${array}) doesn't work correctly with drizzle's sql template
-            const emailParams = sql.join(userEmails.map(e => sql `${e}`), sql `, `);
-            const lddResult = await db.execute(sql `
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+        const sortColumns = {
+            userEmail: employees.userEmail,
+            firstName: employees.firstName,
+            lastName: employees.lastName,
+            preferredName: employees.preferredName,
+            phone: employees.phone,
+            city: employees.city,
+            state: employees.state,
+            country: employees.country,
+            createdAt: employees.createdAt,
+            updatedAt: employees.updatedAt,
+        };
+        const orderCol = sortColumns[sortBy] ?? employees.lastName;
+        const orderDir = sortOrder === 'desc' ? desc(orderCol) : asc(orderCol);
+        const countQuery = db.select({ count: sql `count(*)` }).from(employees);
+        const countRes = whereClause ? await countQuery.where(whereClause) : await countQuery;
+        const total = Number(countRes[0]?.count || 0);
+        const baseQuery = db
+            .select({
+            id: employees.id,
+            userEmail: employees.userEmail,
+            firstName: employees.firstName,
+            lastName: employees.lastName,
+            preferredName: employees.preferredName,
+            phone: employees.phone,
+            city: employees.city,
+            state: employees.state,
+            country: employees.country,
+            isActive: employees.isActive,
+            createdAt: employees.createdAt,
+            updatedAt: employees.updatedAt,
+        })
+            .from(employees);
+        const employeeRows = whereClause
+            ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)
+            : await baseQuery.orderBy(orderDir).limit(pageSize).offset(offset);
+        // Enrich with LDD data using raw SQL query (org tables are from auth-core)
+        const userEmails = employeeRows.map((e) => e.userEmail);
+        const lddMap = {};
+        if (userEmails.length > 0) {
+            try {
+                // Use IN clause with sql.join for proper array parameter handling
+                // ANY(${array}) doesn't work correctly with drizzle's sql template
+                const emailParams = sql.join(userEmails.map(e => sql `${e}`), sql `, `);
+                const lddResult = await db.execute(sql `
         SELECT 
           a.user_key,
           d.name as division_name,
@@ -238,37 +303,45 @@ export async function GET(request) {
         LEFT JOIN org_locations l ON l.id = a.location_id
         WHERE a.user_key IN (${emailParams})
       `);
-            const rows = lddResult.rows;
-            for (const row of rows) {
-                lddMap[row.user_key] = {
-                    divisionName: row.division_name,
-                    departmentName: row.department_name,
-                    locationName: row.location_name,
-                };
+                const rows = lddResult.rows;
+                for (const row of rows) {
+                    lddMap[row.user_key] = {
+                        divisionName: row.division_name,
+                        departmentName: row.department_name,
+                        locationName: row.location_name,
+                    };
+                }
+            }
+            catch (e) {
+                // Log the error for debugging - org tables might not exist yet
+                console.error('Failed to fetch LDD data for employees:', e);
             }
         }
-        catch (e) {
-            // Log the error for debugging - org tables might not exist yet
-            console.error('Failed to fetch LDD data for employees:', e);
-        }
+        // Merge employee data with LDD
+        const items = employeeRows.map((emp) => ({
+            ...emp,
+            divisionName: lddMap[emp.userEmail]?.divisionName || null,
+            departmentName: lddMap[emp.userEmail]?.departmentName || null,
+            locationName: lddMap[emp.userEmail]?.locationName || null,
+        }));
+        return NextResponse.json({
+            items,
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize),
+            },
+            meta: provisionMeta,
+        });
     }
-    // Merge employee data with LDD
-    const items = employeeRows.map((emp) => ({
-        ...emp,
-        divisionName: lddMap[emp.userEmail]?.divisionName || null,
-        departmentName: lddMap[emp.userEmail]?.departmentName || null,
-        locationName: lddMap[emp.userEmail]?.locationName || null,
-    }));
-    return NextResponse.json({
-        items,
-        pagination: {
-            page,
-            pageSize,
-            total,
-            totalPages: Math.ceil(total / pageSize),
-        },
-        meta: provisionMeta,
-    });
+    catch (e) {
+        const message = e?.message ? String(e.message) : 'Failed to load employees';
+        if (debugEnabled) {
+            console.error('[hrm employees] list error', e);
+        }
+        return NextResponse.json({ error: debugEnabled ? `${message} ${String(e)}` : message }, { status: 500 });
+    }
 }
 /**
  * POST /api/hrm/employees

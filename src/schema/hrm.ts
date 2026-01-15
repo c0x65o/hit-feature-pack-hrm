@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, index, uniqueIndex, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
@@ -31,11 +31,13 @@ export const employees = pgTable(
     postalCode: varchar('postal_code', { length: 20 }),
     country: varchar('country', { length: 100 }),
 
+    isActive: boolean('is_active').default(true).notNull(),
+
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
       .defaultNow()
       .notNull()
-      .$onUpdate(() => sql`now()`),
+      .$onUpdate(() => new Date()),
   },
   (table) => ({
     userEmailUniq: uniqueIndex('hrm_employees_user_email_idx').on(table.userEmail),
@@ -56,6 +58,7 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
   state: z.string().max(100).optional(),
   postalCode: z.string().max(20).optional(),
   country: z.string().max(100).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export type Employee = typeof employees.$inferSelect;

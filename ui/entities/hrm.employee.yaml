@@ -46,6 +46,7 @@ entities:
         city: false
         state: false
         country: false
+        isActive: false
         createdAt: false
         updatedAt: false
       columns:
@@ -53,6 +54,7 @@ entities:
         - preferredName
         - firstName
         - lastName
+        - isActive
         - phone
         - city
         - state
@@ -77,6 +79,7 @@ entities:
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
       preferredName: { type: text, label: Preferred Name }
+      isActive: { type: boolean, label: Active }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
       address2: { type: text, label: Address Line 2 }

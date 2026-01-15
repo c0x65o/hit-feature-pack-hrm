@@ -1,4 +1,20 @@
 import { NextResponse } from 'next/server';
+function getEnvFlag(name) {
+    const env = globalThis?.process?.env || {};
+    const raw = String(env[name] || '').trim().toLowerCase();
+    return raw === '1' || raw === 'true' || raw === 'yes';
+}
+function isAuthDebug() {
+    return getEnvFlag('HIT_AUTH_DEBUG') || getEnvFlag('HIT_DEBUG');
+}
+function formatDebugDetails(input) {
+    try {
+        return JSON.stringify(input);
+    }
+    catch {
+        return String(input);
+    }
+}
 function getForwardedBearerFromRequest(request) {
     const rawTokenHeader = request.headers.get('x-hit-token-raw') || request.headers.get('X-HIT-Token-Raw');
     const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
@@ -25,10 +41,6 @@ function getFrontendBaseUrlFromRequest(request) {
     return host ? `${proto}://${host}` : new URL(request.url).origin;
 }
 function getAuthBaseUrl(request) {
-    const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
-    if (envUrl && String(envUrl).trim()) {
-        return { baseUrl: String(envUrl).trim().replace(/\/$/, ''), source: 'env' };
-    }
     return { baseUrl: getAuthProxyBaseUrlFromRequest(request).replace(/\/$/, ''), source: 'proxy' };
 }
 export function extractUserFromRequest(request) {
@@ -96,17 +108,17 @@ export async function requirePageAccess(request, pagePath) {
     if (user instanceof NextResponse)
         return user;
     const bearer = getForwardedBearerFromRequest(request);
-    if (!bearer)
+    if (!bearer) {
+        if (isAuthDebug()) {
+            console.warn('[hrm auth] missing bearer for page check', {
+                pagePath,
+                hasCookie: Boolean(request.cookies.get('hit_token')?.value),
+                hasAuthHeader: Boolean(request.headers.get('authorization') || request.headers.get('Authorization')),
+                requestId: request.headers.get('x-request-id') || request.headers.get('X-Request-Id') || null,
+            });
+        }
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // IMPORTANT (prod parity):
-    // Many deployed environments inject X-HIT-Service-Token on the *incoming* request to the app
-    // (so modules can resolve config/db via provisioner). Server-side fetches to our own proxy
-    // must forward it explicitly; `credentials: 'include'` does not forward headers in Next's
-    // server runtime.
-    const serviceToken = request.headers.get('x-hit-service-token') ||
-        request.headers.get('X-HIT-Service-Token') ||
-        process.env.HIT_SERVICE_TOKEN ||
-        '';
+    }
     const { baseUrl, source } = getAuthBaseUrl(request);
     const frontendBaseUrl = getFrontendBaseUrlFromRequest(request);
     try {
@@ -117,7 +129,6 @@ export async function requirePageAccess(request, pagePath) {
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: bearer,
-                ...(serviceToken ? { 'X-HIT-Service-Token': serviceToken } : {}),
                 ...(frontendBaseUrl ? { 'X-Frontend-Base-URL': frontendBaseUrl } : {}),
             },
             credentials: 'include',
@@ -125,11 +136,32 @@ export async function requirePageAccess(request, pagePath) {
         const json = await res.json().catch(() => ({}));
         // Fail closed if auth proxy returns non-200 or unexpected shape.
         const allowed = Boolean(json?.has_permission ?? json?.hasPermission ?? false);
+        if (isAuthDebug()) {
+            console.warn('[hrm auth] page check response', {
+                pagePath,
+                status: res.status,
+                ok: res.ok,
+                allowed,
+                authBaseUrl: baseUrl,
+                authBaseSource: source,
+                frontendBaseUrl,
+                body: json,
+                requestId: request.headers.get('x-request-id') || request.headers.get('X-Request-Id') || null,
+            });
+        }
         if (!res.ok || !allowed) {
+            const debugPayload = {
+                status: res.status,
+                authBaseSource: source,
+                authBaseUrl: baseUrl,
+                allowed,
+                body: json,
+            };
+            const debugSuffix = isAuthDebug() ? ` ${formatDebugDetails(debugPayload)}` : '';
             // Keep response safe/minimal but include enough to debug in audit logs.
             const debug = typeof json === 'object' && json ? json : { raw: json };
             return NextResponse.json({
-                error: 'Forbidden',
+                error: `Forbidden${debugSuffix}`,
                 code: 'page_access_denied',
                 pagePath,
                 authz: {
@@ -142,6 +174,16 @@ export async function requirePageAccess(request, pagePath) {
         return user;
     }
     catch (e) {
+        if (isAuthDebug()) {
+            console.warn('[hrm auth] page check exception', {
+                pagePath,
+                authBaseUrl: baseUrl,
+                authBaseSource: source,
+                frontendBaseUrl,
+                message: e?.message ? String(e.message) : 'Auth check threw',
+                requestId: request.headers.get('x-request-id') || request.headers.get('X-Request-Id') || null,
+            });
+        }
         return NextResponse.json({
             error: 'Forbidden',
             code: 'page_access_denied',
