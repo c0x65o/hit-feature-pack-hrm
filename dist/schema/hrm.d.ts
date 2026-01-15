@@ -102,6 +102,23 @@ export declare const employees: import("drizzle-orm/pg-core").PgTableWithColumns
         }, {}, {
             length: 255;
         }>;
+        profilePictureUrl: import("drizzle-orm/pg-core").PgColumn<{
+            name: "profile_picture_url";
+            tableName: "hrm_employees";
+            dataType: "string";
+            columnType: "PgText";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
         managerId: import("drizzle-orm/pg-core").PgColumn<{
             name: "manager_id";
             tableName: "hrm_employees";
@@ -400,6 +417,23 @@ export declare const EmployeeSchema: import("drizzle-zod").BuildSchema<"select",
     }, {}, {
         length: 255;
     }>;
+    profilePictureUrl: import("drizzle-orm/pg-core").PgColumn<{
+        name: "profile_picture_url";
+        tableName: "hrm_employees";
+        dataType: "string";
+        columnType: "PgText";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     managerId: import("drizzle-orm/pg-core").PgColumn<{
         name: "manager_id";
         tableName: "hrm_employees";
@@ -696,6 +730,23 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
     }, {}, {
         length: 255;
     }>;
+    profilePictureUrl: import("drizzle-orm/pg-core").PgColumn<{
+        name: "profile_picture_url";
+        tableName: "hrm_employees";
+        dataType: "string";
+        columnType: "PgText";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     managerId: import("drizzle-orm/pg-core").PgColumn<{
         name: "manager_id";
         tableName: "hrm_employees";
@@ -902,6 +953,7 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
     firstName: z.ZodString;
     lastName: z.ZodString;
     preferredName: z.ZodOptional<z.ZodString>;
+    profilePictureUrl: z.ZodOptional<z.ZodString>;
     managerId: z.ZodOptional<z.ZodString>;
     phone: z.ZodOptional<z.ZodString>;
     address1: z.ZodOptional<z.ZodString>;

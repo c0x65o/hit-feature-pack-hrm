@@ -41,19 +41,38 @@ function getForwardedBearerFromRequest(request: NextRequest): string {
   return bearer;
 }
 
+function getExternalOriginFromRequest(request: NextRequest): string {
+  // Prefer an explicitly provided frontend base URL (some proxies strip/override host headers).
+  const explicit =
+    request.headers.get('x-frontend-base-url') || request.headers.get('X-Frontend-Base-URL') || '';
+  if (explicit && explicit.trim()) return explicit.trim().replace(/\/$/, '');
+
+  const hostRaw = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const protoRaw = request.headers.get('x-forwarded-proto') || 'https';
+
+  // Handle comma-separated values from chained proxies.
+  const host = String(hostRaw).split(',')[0]?.trim();
+  const proto = String(protoRaw).split(',')[0]?.trim() || 'https';
+
+  if (host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
+
 function getAuthProxyBaseUrlFromRequest(request: NextRequest): string {
   // Server-side fetch() requires absolute URL.
-  const origin = new URL(request.url).origin;
+  const origin = getExternalOriginFromRequest(request);
   return `${origin}/api/proxy/auth`;
 }
 
 function getFrontendBaseUrlFromRequest(request: NextRequest): string {
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
-  const proto = request.headers.get('x-forwarded-proto') || 'https';
-  return host ? `${proto}://${host}` : new URL(request.url).origin;
+  return getExternalOriginFromRequest(request);
 }
 
 function getAuthBaseUrl(request: NextRequest): { baseUrl: string; source: string } {
+  const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
+  if (envUrl && String(envUrl).trim()) {
+    return { baseUrl: String(envUrl).trim().replace(/\/$/, ''), source: 'env' };
+  }
   return { baseUrl: getAuthProxyBaseUrlFromRequest(request).replace(/\/$/, ''), source: 'proxy' };
 }
 

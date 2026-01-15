@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requireAuth, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
+import { checkHrmAction } from '../lib/require-action';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 function jsonError(message, status = 400) {
@@ -14,17 +15,6 @@ function getIdFromPath(request) {
     const parts = url.pathname.split('/');
     // Path is /api/hrm/employees/[id]/photo - id is second to last
     return decodeURIComponent(parts[parts.length - 2] || '');
-}
-function getForwardedBearerFromRequest(request) {
-    const authHeader = request.headers.get('authorization') || '';
-    if (authHeader.toLowerCase().startsWith('bearer ')) {
-        return authHeader.slice(7).trim();
-    }
-    return '';
-}
-function getAuthUrlFromRequest(request) {
-    const url = new URL(request.url);
-    return `${url.protocol}//${url.host}/api/proxy/auth`;
 }
 async function fetchUserOrgScopeIds(db, userKey) {
     const rows = await db
@@ -105,6 +95,9 @@ export async function PUT(request) {
     const profilePictureUrl = body.profile_picture_url === null
         ? null
         : String(body.profile_picture_url);
+    if (profilePictureUrl && profilePictureUrl.length > 8000000) {
+        return jsonError('Profile picture is too large', 413);
+    }
     // Get the employee to find their email
     const db = getDb();
     const rows = await db.select().from(employees).where(eq(employees.id, id)).limit(1);
@@ -113,32 +106,28 @@ export async function PUT(request) {
         return jsonError('Employee not found', 404);
     // Check if this is the current user updating their own photo (self-service)
     const isSelf = employee.userEmail.toLowerCase() === user.email.toLowerCase();
-    if (!isSelf) {
-        // For updating another user's photo, check scope-based write access
-        const canAccess = await canAccessEmployeeForWrite(db, request, employee.userEmail);
-        if (!canAccess) {
+    if (isSelf) {
+        // Self-service photo upload is permissioned (security groups).
+        const allowed = await checkHrmAction(request, 'hrm.employees.photo.self');
+        if (!allowed.ok)
             return jsonError('Forbidden', 403);
-        }
     }
-    const token = getForwardedBearerFromRequest(request);
-    const authUrl = getAuthUrlFromRequest(request);
-    // Use /me endpoint for self, /users/{email} for others
-    const endpoint = isSelf ? '/me' : `/users/${encodeURIComponent(employee.userEmail)}`;
-    const response = await fetch(`${authUrl}${endpoint}`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ profile_picture_url: profilePictureUrl }),
-    });
-    if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        return jsonError(data?.detail || data?.error || 'Failed to update profile picture', response.status);
+    else {
+        // Updating others requires BOTH explicit permission + scope-based write access.
+        const allowed = await checkHrmAction(request, 'hrm.employees.photo.any');
+        if (!allowed.ok)
+            return jsonError('Forbidden', 403);
+        const canAccess = await canAccessEmployeeForWrite(db, request, employee.userEmail);
+        if (!canAccess)
+            return jsonError('Forbidden', 403);
     }
-    const data = await response.json().catch(() => ({}));
+    const updated = await db
+        .update(employees)
+        .set({ profilePictureUrl, updatedAt: new Date() })
+        .where(eq(employees.id, id))
+        .returning({ profilePictureUrl: employees.profilePictureUrl });
     return NextResponse.json({
         success: true,
-        profile_picture_url: data.profile_picture_url ?? profilePictureUrl,
+        profile_picture_url: updated?.[0]?.profilePictureUrl ?? profilePictureUrl,
     });
 }

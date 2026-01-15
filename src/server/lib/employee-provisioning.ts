@@ -29,9 +29,22 @@ export function deriveEmployeeNamesFromEmail(email: string): { firstName: string
   return { firstName: 'Employee', lastName: 'User' };
 }
 
+function getExternalOriginFromRequest(request: NextRequest): string {
+  const explicit =
+    request.headers.get('x-frontend-base-url') || request.headers.get('X-Frontend-Base-URL') || '';
+  if (explicit && explicit.trim()) return explicit.trim().replace(/\/$/, '');
+
+  const hostRaw = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+  const protoRaw = request.headers.get('x-forwarded-proto') || 'https';
+  const host = String(hostRaw).split(',')[0]?.trim();
+  const proto = String(protoRaw).split(',')[0]?.trim() || 'https';
+  if (host) return `${proto}://${host}`;
+  return new URL(request.url).origin;
+}
+
 export function getAuthUrlFromRequest(request: NextRequest): string {
   // IMPORTANT: server-side fetch() requires an absolute URL.
-  const origin = new URL(request.url).origin;
+  const origin = getExternalOriginFromRequest(request);
   return `${origin}/api/proxy/auth`;
 }
 
