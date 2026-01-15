@@ -30,10 +30,6 @@ export function deriveEmployeeNamesFromEmail(email: string): { firstName: string
 }
 
 export function getAuthUrlFromRequest(request: NextRequest): string {
-  // Prefer explicit proxy-provided base URL (e.g., when auth is remote).
-  const header = request.headers.get('x-auth-url') || request.headers.get('X-Auth-Url') || '';
-  if (header) return header.replace(/\/$/, '');
-
   // IMPORTANT: server-side fetch() requires an absolute URL.
   const origin = new URL(request.url).origin;
   return `${origin}/api/proxy/auth`;

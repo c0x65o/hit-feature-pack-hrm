@@ -23,11 +23,6 @@ function getForwardedBearerFromRequest(request) {
     return '';
 }
 function getAuthUrlFromRequest(request) {
-    // Check for x-auth-url header (set by proxy)
-    const authUrl = request.headers.get('x-auth-url');
-    if (authUrl)
-        return authUrl;
-    // Fall back to inferring from request URL
     const url = new URL(request.url);
     return `${url.protocol}//${url.host}/api/proxy/auth`;
 }
