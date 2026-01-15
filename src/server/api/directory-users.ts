@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
               firstName: employees.firstName,
               lastName: employees.lastName,
               preferredName: employees.preferredName,
+              profilePictureUrl: employees.profilePictureUrl,
             })
             .from(employees)
             .where(inArray(employees.userEmail, emails));
@@ -98,6 +99,8 @@ export async function GET(request: NextRequest) {
       return {
         ...u,
         employee: employee ? { ...employee } : null,
+        // Prefer HRM-owned photo; fall back to auth directory's photo if present.
+        profile_picture_url: employee?.profilePictureUrl ?? u?.profile_picture_url ?? null,
         // Keep a normalized displayName field for convenience (callers can still compute their own).
         displayName: employeeDisplayName || u?.displayName || null,
       };

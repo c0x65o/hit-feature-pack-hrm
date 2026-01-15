@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, index, uniqueIndex, boolean, foreignKey } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, index, uniqueIndex, boolean, foreignKey } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
@@ -19,6 +19,8 @@ export const employees = pgTable(
     firstName: varchar('first_name', { length: 255 }).notNull(),
     lastName: varchar('last_name', { length: 255 }).notNull(),
     preferredName: varchar('preferred_name', { length: 255 }),
+    /** Profile picture URL or data URL (owned by HRM, not auth). */
+    profilePictureUrl: text('profile_picture_url'),
 
     /** Employee manager (self-referential). */
     managerId: uuid('manager_id'),
@@ -60,6 +62,7 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   preferredName: z.string().min(1).optional(),
+  profilePictureUrl: z.string().optional(),
   managerId: z.string().uuid().optional(),
   phone: z.string().max(50).optional(),
   address1: z.string().max(255).optional(),
