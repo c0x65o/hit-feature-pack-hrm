@@ -30,6 +30,12 @@ export type EntityFormRegistries = {
     myOrgScope?: any;
     loading?: Record<string, boolean>;
 };
+export type DirectReportsResult = {
+    directReports: any[];
+    orgTree: any[];
+    loading: boolean;
+    refetch: () => Promise<any> | void;
+};
 export type EntityDataSource = {
     useList?: (args: ListQueryArgs) => EntityListResult;
     useDetail?: (args: {
@@ -41,4 +47,5 @@ export type EntityDataSource = {
     useFormRegistries?: () => EntityFormRegistries;
 };
 export declare function useEntityDataSource(entityKey: string): EntityDataSource | null;
+export declare function useDirectReports(employeeId: string): DirectReportsResult;
 //# sourceMappingURL=entityDataSources.d.ts.map

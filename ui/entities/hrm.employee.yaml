@@ -67,7 +67,7 @@ entities:
         - id: basics
           title: Basics
           layout: { columns: 2 }
-          fields: [userEmail, firstName, lastName, preferredName, phone]
+          fields: [userEmail, firstName, lastName, preferredName, managerId, phone]
         - id: address
           title: Address
           layout: { columns: 2 }
@@ -79,6 +79,7 @@ entities:
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
       preferredName: { type: text, label: Preferred Name }
+      managerId: { type: reference, label: Manager, reference: { entityType: hrm.employee } }
       isActive: { type: boolean, label: Active }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
@@ -100,6 +101,7 @@ entities:
         - preferredName
         - firstName
         - lastName
+        - managerId
         - phone
         - address1
         - address2
@@ -112,3 +114,26 @@ entities:
         - locationName
         - createdAt
         - updatedAt
+      extras:
+        - kind: tabs
+          tabs:
+            - id: list
+              label: Direct Reports
+              platforms: [web, mobile]
+              content:
+                kind: embeddedTable
+                title: Direct Reports
+                entityType: hrm.employee
+                query:
+                  managerId:
+                    valueFrom:
+                      kind: parentField
+                      field: id
+            - id: chart
+              label: Org Chart
+              platforms: [web]
+              content:
+                kind: orgChart
+                employeeIdFrom:
+                  kind: parentField
+                  field: id

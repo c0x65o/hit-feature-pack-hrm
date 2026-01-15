@@ -4,7 +4,7 @@ import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { getAuthUrlFromRequest, getForwardedBearerFromRequest, syncEmployeesWithAuthUsers, } from '../lib/employee-provisioning';
-import { checkHrmAction } from '../lib/require-action';
+import { checkAuthCoreReadScope } from '@hit/feature-pack-auth-core/server/lib/require-action';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,6 +53,7 @@ export async function GET(request) {
     const pageSize = Math.min(Math.max(1, pageSizeRaw), 200);
     const offset = (page - 1) * pageSize;
     const search = (sp.get('search') || '').trim();
+    const managerId = (sp.get('managerId') || '').trim();
     const sortBy = (sp.get('sortBy') || 'lastName').trim();
     const sortOrder = (sp.get('sortOrder') || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
     // Foolproof invariant: ensure employee rows exist for all auth users before listing.
@@ -80,7 +81,7 @@ export async function GET(request) {
         provisionMeta.bearerPresent = Boolean(bearer);
         const authUrl = getAuthUrlFromRequest(request);
         provisionMeta.authUrl = authUrl;
-        const adminAccess = await checkHrmAction(request, 'auth-core.admin.access');
+        const adminAccess = await checkAuthCoreReadScope(request);
         const directoryLimit = 500;
         let users = [];
         let allowDeactivation = false;
@@ -245,6 +246,9 @@ export async function GET(request) {
         }
         if (search) {
             conditions.push(or(like(employees.userEmail, `%${search}%`), like(employees.firstName, `%${search}%`), like(employees.lastName, `%${search}%`), like(employees.preferredName, `%${search}%`)));
+        }
+        if (managerId) {
+            conditions.push(eq(employees.managerId, managerId));
         }
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
         const sortColumns = {

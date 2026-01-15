@@ -4,6 +4,9 @@ import { useMemo } from 'react';
 import { useUi } from '@hit/ui-kit';
 import { useEntityResolver } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
+import { EmbeddedEntityTable } from './EmbeddedEntityTable';
+import { OrgChart } from './components/OrgChart';
+import { getHitPlatform } from './platformVisibility';
 function asRecord(v) {
     return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
 }
@@ -53,14 +56,57 @@ function DetailField({ uiSpec, record, fieldKey }) {
     return (_jsxs("div", { children: [_jsx("div", { className: "text-sm text-gray-400 mb-1", children: label }), _jsx("div", { children: String(raw) })] }, fieldKey));
 }
 export function EntityDetailBody({ entityKey, uiSpec, record, navigate, }) {
-    const { Card } = useUi();
+    const { Card, Tabs, Alert } = useUi();
     const detailSpec = asRecord(uiSpec?.detail) || {};
-    const { linkedEntityTabs } = splitLinkedEntityTabsExtra(detailSpec.extras);
+    const { linkedEntityTabs, extras } = splitLinkedEntityTabsExtra(detailSpec.extras);
     const summaryFields = useMemo(() => {
         const explicit = Array.isArray(detailSpec.summaryFields) ? detailSpec.summaryFields.map(String) : null;
         return explicit && explicit.length > 0 ? explicit : [];
     }, [detailSpec.summaryFields]);
-    const inner = (_jsxs(Card, { children: [_jsx("h2", { className: "text-lg font-semibold mb-4", children: String(detailSpec.summaryTitle || 'Details') }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: summaryFields.map((k) => (_jsx(DetailField, { uiSpec: uiSpec, record: record, fieldKey: String(k) }, `${entityKey}-${k}`))) })] }));
+    const platform = getHitPlatform();
+    const renderExtraContent = (spec) => {
+        const kind = String(spec?.kind || '');
+        if (kind === 'embeddedTable') {
+            if (!navigate)
+                return null;
+            return _jsx(EmbeddedEntityTable, { spec: spec, parent: record, navigate: navigate });
+        }
+        if (kind === 'orgChart') {
+            const employeeIdFrom = asRecord(spec?.employeeIdFrom) || {};
+            const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
+            const employeeId = String(record?.[fromField] ?? record?.id ?? '').trim();
+            if (!employeeId)
+                return null;
+            return _jsx(OrgChart, { employeeId: employeeId, onNavigate: navigate });
+        }
+        return (_jsxs(Alert, { variant: "warning", title: "Unsupported detail extra", children: ["No renderer is registered for `", kind, "` yet."] }));
+    };
+    const renderExtra = (spec, idx) => {
+        const kind = String(spec?.kind || '');
+        if (kind === 'tabs') {
+            const tabsAny = Array.isArray(spec?.tabs) ? spec.tabs : [];
+            const tabs = tabsAny
+                .map((tab) => {
+                const tabPlatforms = Array.isArray(tab?.platforms) ? tab.platforms.map(String) : [];
+                if (tabPlatforms.length > 0 && !tabPlatforms.includes(platform))
+                    return null;
+                const contentSpec = asRecord(tab?.content) || {};
+                return {
+                    id: String(tab?.id || tab?.value || ''),
+                    label: String(tab?.label || 'Tab'),
+                    content: renderExtraContent(contentSpec),
+                };
+            })
+                .filter(Boolean);
+            if (!tabs.length)
+                return null;
+            return _jsx(Tabs, { tabs: tabs }, `extra-tabs-${idx}`);
+        }
+        return _jsx("div", { children: renderExtraContent(spec) }, `extra-${idx}`);
+    };
+    const inner = (_jsxs("div", { className: "space-y-4", children: [_jsxs(Card, { children: [_jsx("h2", { className: "text-lg font-semibold mb-4", children: String(detailSpec.summaryTitle || 'Details') }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: summaryFields.map((k) => (_jsx(DetailField, { uiSpec: uiSpec, record: record, fieldKey: String(k) }, `${entityKey}-${k}`))) })] }), extras
+                .filter((x) => Boolean(x) && typeof x === 'object')
+                .map((x, idx) => renderExtra(x, idx))] }));
     return wrapWithLinkedEntityTabsIfConfigured({
         linkedEntityTabs,
         entityKey,

@@ -40,6 +40,13 @@ export type EntityFormRegistries = {
   loading?: Record<string, boolean>;
 };
 
+export type DirectReportsResult = {
+  directReports: any[];
+  orgTree: any[];
+  loading: boolean;
+  refetch: () => Promise<any> | void;
+};
+
 export type EntityDataSource = {
   useList?: (args: ListQueryArgs) => EntityListResult;
   useDetail?: (args: { id: string }) => EntityDetailResult;
@@ -105,6 +112,35 @@ function useHrmEmployeeDetail(id: string) {
   return { record, loading, refetch: fetchData };
 }
 
+function useHrmDirectReports(employeeId: string): DirectReportsResult {
+  const [directReports, setDirectReports] = useState<any[]>([]);
+  const [orgTree, setOrgTree] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!employeeId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports`, {
+        headers: authHeaders(),
+        credentials: 'include',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load direct reports');
+      setDirectReports(Array.isArray(json?.directReports) ? json.directReports : []);
+      setOrgTree(Array.isArray(json?.orgTree) ? json.orgTree : []);
+    } finally {
+      setLoading(false);
+    }
+  }, [employeeId]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  return { directReports, orgTree, loading, refetch: fetchData };
+}
+
 export function useEntityDataSource(entityKey: string): EntityDataSource | null {
   if (entityKey !== 'hrm.employee') return null;
 
@@ -146,5 +182,9 @@ export function useEntityDataSource(entityKey: string): EntityDataSource | null 
       referenceRenderers: {},
     }),
   };
+}
+
+export function useDirectReports(employeeId: string): DirectReportsResult {
+  return useHrmDirectReports(employeeId);
 }
 

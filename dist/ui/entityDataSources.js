@@ -58,6 +58,34 @@ function useHrmEmployeeDetail(id) {
     }, [fetchData]);
     return { record, loading, refetch: fetchData };
 }
+function useHrmDirectReports(employeeId) {
+    const [directReports, setDirectReports] = useState([]);
+    const [orgTree, setOrgTree] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const fetchData = useCallback(async () => {
+        if (!employeeId)
+            return;
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports`, {
+                headers: authHeaders(),
+                credentials: 'include',
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok)
+                throw new Error(json?.error || json?.detail || 'Failed to load direct reports');
+            setDirectReports(Array.isArray(json?.directReports) ? json.directReports : []);
+            setOrgTree(Array.isArray(json?.orgTree) ? json.orgTree : []);
+        }
+        finally {
+            setLoading(false);
+        }
+    }, [employeeId]);
+    useEffect(() => {
+        void fetchData();
+    }, [fetchData]);
+    return { directReports, orgTree, loading, refetch: fetchData };
+}
 export function useEntityDataSource(entityKey) {
     if (entityKey !== 'hrm.employee')
         return null;
@@ -100,4 +128,7 @@ export function useEntityDataSource(entityKey) {
             referenceRenderers: {},
         }),
     };
+}
+export function useDirectReports(employeeId) {
+    return useHrmDirectReports(employeeId);
 }

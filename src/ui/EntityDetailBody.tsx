@@ -4,6 +4,9 @@ import React, { useMemo } from 'react';
 import { useUi } from '@hit/ui-kit';
 import { useEntityResolver } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
+import { EmbeddedEntityTable, type EmbeddedTableSpec } from './EmbeddedEntityTable';
+import { OrgChart } from './components/OrgChart';
+import { getHitPlatform } from './platformVisibility';
 
 function asRecord(v: unknown): Record<string, any> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as any) : null;
@@ -79,23 +82,74 @@ export function EntityDetailBody({
   record: any;
   navigate?: (path: string) => void;
 }) {
-  const { Card } = useUi();
+  const { Card, Tabs, Alert } = useUi();
   const detailSpec = asRecord(uiSpec?.detail) || {};
-  const { linkedEntityTabs } = splitLinkedEntityTabsExtra((detailSpec as any).extras);
+  const { linkedEntityTabs, extras } = splitLinkedEntityTabsExtra((detailSpec as any).extras);
   const summaryFields = useMemo(() => {
     const explicit = Array.isArray(detailSpec.summaryFields) ? detailSpec.summaryFields.map(String) : null;
     return explicit && explicit.length > 0 ? explicit : [];
   }, [detailSpec.summaryFields]);
+  const platform = getHitPlatform();
+
+  const renderExtraContent = (spec: Record<string, any>) => {
+    const kind = String(spec?.kind || '');
+    if (kind === 'embeddedTable') {
+      if (!navigate) return null;
+      return <EmbeddedEntityTable spec={spec as EmbeddedTableSpec} parent={record} navigate={navigate} />;
+    }
+    if (kind === 'orgChart') {
+      const employeeIdFrom = asRecord(spec?.employeeIdFrom) || {};
+      const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
+      const employeeId = String((record as any)?.[fromField] ?? (record as any)?.id ?? '').trim();
+      if (!employeeId) return null;
+      return <OrgChart employeeId={employeeId} onNavigate={navigate} />;
+    }
+    return (
+      <Alert variant="warning" title="Unsupported detail extra">
+        No renderer is registered for `{kind}` yet.
+      </Alert>
+    );
+  };
+
+  const renderExtra = (spec: Record<string, any>, idx: number) => {
+    const kind = String(spec?.kind || '');
+    if (kind === 'tabs') {
+      const tabsAny = Array.isArray(spec?.tabs) ? spec.tabs : [];
+      const tabs = tabsAny
+        .map((tab: any) => {
+          const tabPlatforms = Array.isArray(tab?.platforms) ? tab.platforms.map(String) : [];
+          if (tabPlatforms.length > 0 && !tabPlatforms.includes(platform)) return null;
+          const contentSpec = asRecord(tab?.content) || {};
+          return {
+            id: String(tab?.id || tab?.value || ''),
+            label: String(tab?.label || 'Tab'),
+            content: renderExtraContent(contentSpec),
+          };
+        })
+        .filter(Boolean) as Array<{ id?: string; label: string; content?: React.ReactNode }>;
+
+      if (!tabs.length) return null;
+      return <Tabs key={`extra-tabs-${idx}`} tabs={tabs} />;
+    }
+
+    return <div key={`extra-${idx}`}>{renderExtraContent(spec)}</div>;
+  };
 
   const inner = (
-    <Card>
-      <h2 className="text-lg font-semibold mb-4">{String(detailSpec.summaryTitle || 'Details')}</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {summaryFields.map((k) => (
-          <DetailField key={`${entityKey}-${k}`} uiSpec={uiSpec} record={record} fieldKey={String(k)} />
-        ))}
-      </div>
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <h2 className="text-lg font-semibold mb-4">{String(detailSpec.summaryTitle || 'Details')}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {summaryFields.map((k) => (
+            <DetailField key={`${entityKey}-${k}`} uiSpec={uiSpec} record={record} fieldKey={String(k)} />
+          ))}
+        </div>
+      </Card>
+
+      {extras
+        .filter((x: unknown): x is Record<string, any> => Boolean(x) && typeof x === 'object')
+        .map((x, idx) => renderExtra(x, idx))}
+    </div>
   );
 
   return wrapWithLinkedEntityTabsIfConfigured({

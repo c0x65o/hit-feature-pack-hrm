@@ -38,6 +38,11 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-id"
       description: "Admin: get/update an employee by id"
 
+    - path: /api/hrm/employees/[id]/direct-reports
+      methods: [GET]
+      handler: "@hit/feature-pack-hrm/server/api/employees-direct-reports"
+      description: "Get direct reports and org tree for an employee"
+
     - path: /api/hrm/employees/[id]/photo
       methods: [PUT]
       handler: "@hit/feature-pack-hrm/server/api/employees-photo"

@@ -1,0 +1,1 @@
+{"version":3,"file":"HrmEmployeesEmbeddedTable.d.ts","sourceRoot":"","sources":["../../src/ui/HrmEmployeesEmbeddedTable.tsx"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,uBAAuB,CAAC;AAe/D,wBAAgB,yBAAyB,CAAC,EACxC,IAAI,EACJ,MAAM,EACN,QAAQ,GACT,EAAE;IACD,IAAI,EAAE,iBAAiB,CAAC;IACxB,MAAM,EAAE,GAAG,CAAC;IACZ,QAAQ,EAAE,CAAC,IAAI,EAAE,MAAM,KAAK,IAAI,CAAC;CAClC,2CAkGA"}

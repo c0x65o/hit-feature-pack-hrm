@@ -10,6 +10,7 @@ import {
   syncEmployeesWithAuthUsers,
 } from '../lib/employee-provisioning';
 import { checkHrmAction } from '../lib/require-action';
+import { checkAuthCoreReadScope } from '@hit/feature-pack-auth-core/server/lib/require-action';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
   const offset = (page - 1) * pageSize;
 
   const search = (sp.get('search') || '').trim();
+  const managerId = (sp.get('managerId') || '').trim();
   const sortBy = (sp.get('sortBy') || 'lastName').trim();
   const sortOrder = (sp.get('sortOrder') || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
 
@@ -117,7 +119,7 @@ export async function GET(request: NextRequest) {
     const authUrl = getAuthUrlFromRequest(request);
     provisionMeta.authUrl = authUrl;
 
-    const adminAccess = await checkHrmAction(request, 'auth-core.admin.access');
+    const adminAccess = await checkAuthCoreReadScope(request);
     const directoryLimit = 500;
     let users: any[] = [];
     let allowDeactivation = false;
@@ -307,6 +309,10 @@ export async function GET(request: NextRequest) {
         like(employees.preferredName, `%${search}%`)
       )!
     );
+  }
+
+  if (managerId) {
+    conditions.push(eq(employees.managerId, managerId as any));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

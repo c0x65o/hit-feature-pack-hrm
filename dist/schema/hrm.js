@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, index, uniqueIndex, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, index, uniqueIndex, boolean, foreignKey } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 /**
@@ -14,6 +14,8 @@ export const employees = pgTable('hrm_employees', {
     firstName: varchar('first_name', { length: 255 }).notNull(),
     lastName: varchar('last_name', { length: 255 }).notNull(),
     preferredName: varchar('preferred_name', { length: 255 }),
+    /** Employee manager (self-referential). */
+    managerId: uuid('manager_id'),
     // Contact information
     phone: varchar('phone', { length: 50 }),
     // Address fields
@@ -32,6 +34,12 @@ export const employees = pgTable('hrm_employees', {
 }, (table) => ({
     userEmailUniq: uniqueIndex('hrm_employees_user_email_idx').on(table.userEmail),
     nameIdx: index('hrm_employees_name_idx').on(table.lastName, table.firstName),
+    managerIdx: index('hrm_employees_manager_idx').on(table.managerId),
+    managerFk: foreignKey({
+        columns: [table.managerId],
+        foreignColumns: [table.id],
+        name: 'hrm_employees_manager_fk',
+    }).onDelete('set null'),
 }));
 export const EmployeeSchema = createSelectSchema(employees);
 export const InsertEmployeeSchema = createInsertSchema(employees, {
@@ -39,6 +47,7 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
     firstName: z.string().min(1),
     lastName: z.string().min(1),
     preferredName: z.string().min(1).optional(),
+    managerId: z.string().uuid().optional(),
     phone: z.string().max(50).optional(),
     address1: z.string().max(255).optional(),
     address2: z.string().max(255).optional(),
