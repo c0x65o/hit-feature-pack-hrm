@@ -43,6 +43,11 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-direct-reports"
       description: "Get direct reports and org tree for an employee"
 
+    - path: /api/hrm/employees/org-tree
+      methods: [GET]
+      handler: "@hit/feature-pack-hrm/server/api/employees-org-tree"
+      description: "Get the org tree for all employees in scope"
+
     - path: /api/hrm/employees/[id]/photo
       methods: [PUT]
       handler: "@hit/feature-pack-hrm/server/api/employees-photo"
@@ -56,6 +61,11 @@ routes:
     default_roles_allow: [admin]
     authz: { entity: employees, verb: read }
     params: { entityKey: hrm.employee }
+  - path: /hrm/org-chart
+    page: OrgChart
+    roles: []
+    default_roles_allow: [admin]
+    authz: { entity: employees, verb: read }
   - path: /hrm/employees/[id]
     page: EntityDetail
     roles: []
@@ -82,6 +92,12 @@ nav:
         path: /hrm/employees
         icon: IdCard
         weight: 10
+        showWhen: authenticated
+      - id: hrm-org-chart
+        label: Org Chart
+        path: /hrm/org-chart
+        icon: Share2
+        weight: 20
         showWhen: authenticated
 
 # ─────────────────────────────────────────────────────────────────────────────

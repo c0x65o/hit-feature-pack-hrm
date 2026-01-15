@@ -3,9 +3,9 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo, useState, useEffect } from 'react';
 import ReactFlow, { Background, Controls } from 'reactflow';
 import 'reactflow/dist/style.css';
-function buildLevels(root) {
+function buildLevels(roots) {
     const levels = new Map();
-    if (!root)
+    if (!roots.length)
         return levels;
     const walk = (node, depth) => {
         const level = levels.get(depth) || [];
@@ -15,22 +15,28 @@ function buildLevels(root) {
             walk(child, depth + 1);
         }
     };
-    walk(root, 0);
+    roots.forEach((root) => walk(root, 0));
     return levels;
 }
-export function OrgChart({ employeeId, onNavigate }) {
-    const [tree, setTree] = useState(null);
+export function OrgChart({ employeeId, apiPath, onNavigate }) {
+    const [roots, setRoots] = useState([]);
     const [loading, setLoading] = useState(true);
+    const endpoint = (apiPath || '').trim() || (employeeId ? `/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports` : '');
     useEffect(() => {
+        if (!endpoint) {
+            setRoots([]);
+            setLoading(false);
+            return;
+        }
         let mounted = true;
         const fetchTree = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports`);
+                const res = await fetch(endpoint);
                 const json = res.ok ? await res.json() : null;
-                const root = Array.isArray(json?.orgTree) ? json.orgTree[0] : null;
+                const orgTree = Array.isArray(json?.orgTree) ? json.orgTree : [];
                 if (mounted)
-                    setTree(root || null);
+                    setRoots(orgTree);
             }
             finally {
                 if (mounted)
@@ -41,11 +47,11 @@ export function OrgChart({ employeeId, onNavigate }) {
         return () => {
             mounted = false;
         };
-    }, [employeeId]);
+    }, [endpoint]);
     const { nodes, edges } = useMemo(() => {
-        if (!tree)
+        if (!roots.length)
             return { nodes: [], edges: [] };
-        const levels = buildLevels(tree);
+        const levels = buildLevels(roots);
         const nodesOut = [];
         const edgesOut = [];
         const nodePosition = new Map();
@@ -83,13 +89,13 @@ export function OrgChart({ employeeId, onNavigate }) {
                 walk(child);
             }
         };
-        walk(tree);
+        roots.forEach((root) => walk(root));
         return { nodes: nodesOut, edges: edgesOut };
-    }, [tree]);
+    }, [roots]);
     if (loading) {
         return _jsx("div", { className: "text-sm text-gray-500", children: "Loading org chart..." });
     }
-    if (!tree) {
+    if (!roots.length) {
         return _jsx("div", { className: "text-sm text-gray-500", children: "No org chart data available." });
     }
     return (_jsx("div", { className: "h-[520px] w-full border rounded-lg overflow-hidden", children: _jsxs(ReactFlow, { nodes: nodes, edges: edges, fitView: true, nodesDraggable: false, onNodeClick: ((_, node) => {

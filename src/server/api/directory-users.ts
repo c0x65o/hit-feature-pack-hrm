@@ -30,11 +30,22 @@ function displayNameFromEmployee(e: { preferredName?: string | null; firstName?:
  */
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const search = String(searchParams.get('search') || '').trim().toLowerCase();
+    const id = String(searchParams.get('id') || '').trim().toLowerCase();
+    const pageSize = Math.min(parseInt(searchParams.get('pageSize') || '25', 10), 100);
+
     // Forward auth (prefer a real Bearer token; Cookie header forwarding is unreliable in Next App Router).
     const bearer = getForwardedBearerFromRequest(request);
 
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (bearer) headers['Authorization'] = bearer;
+    // Forward cookies + base URL hints in case auth is remote or headers are stripped.
+    const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
+    if (cookieHeader) headers['Cookie'] = cookieHeader;
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+    const proto = request.headers.get('x-forwarded-proto') || 'https';
+    if (host) headers['X-Frontend-Base-URL'] = `${proto}://${host}`;
 
     const authUrl = getAuthUrlFromRequest(request);
     const res = await fetch(`${authUrl}/directory/users`, {
@@ -92,7 +103,30 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json(enriched);
+    const normalize = (value: unknown) => String(value || '').trim().toLowerCase();
+    const filtered = id
+      ? enriched.filter((u: any) => normalize(u?.email) === id)
+      : search
+        ? enriched.filter((u: any) => {
+            const email = normalize(u?.email);
+            const displayName = normalize(u?.displayName || u?.name);
+            const employee = u?.employee || {};
+            const preferred = normalize(employee?.preferredName);
+            const first = normalize(employee?.firstName);
+            const last = normalize(employee?.lastName);
+            const fullName = `${first} ${last}`.trim();
+            return (
+              email.includes(search) ||
+              displayName.includes(search) ||
+              preferred.includes(search) ||
+              first.includes(search) ||
+              last.includes(search) ||
+              fullName.includes(search)
+            );
+          })
+        : enriched;
+
+    return NextResponse.json(filtered.slice(0, pageSize));
   } catch (error) {
     console.error('[hrm] directory-users GET error:', error);
     return jsonError('Failed to fetch user directory', 500);

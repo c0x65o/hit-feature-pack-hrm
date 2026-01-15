@@ -1,5 +1,6 @@
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { employees } from '@/lib/feature-pack-schemas';
+import { getAuthBaseUrl } from '@hit/feature-pack-auth-core/server/lib/acl-utils';
 function toTitle(word) {
     const w = String(word || '').trim();
     if (!w)
@@ -25,6 +26,9 @@ export function deriveEmployeeNamesFromEmail(email) {
     return { firstName: 'Employee', lastName: 'User' };
 }
 export function getAuthUrlFromRequest(request) {
+    const base = getAuthBaseUrl(request);
+    if (base)
+        return base;
     // IMPORTANT: server-side fetch() requires an absolute URL.
     const origin = new URL(request.url).origin;
     return `${origin}/api/proxy/auth`;

@@ -16,13 +16,14 @@ type OrgTreeNode = {
 };
 
 type OrgChartProps = {
-  employeeId: string;
+  employeeId?: string;
+  apiPath?: string;
   onNavigate?: (path: string) => void;
 };
 
-function buildLevels(root: OrgTreeNode | null): Map<number, OrgTreeNode[]> {
+function buildLevels(roots: OrgTreeNode[]): Map<number, OrgTreeNode[]> {
   const levels = new Map<number, OrgTreeNode[]>();
-  if (!root) return levels;
+  if (!roots.length) return levels;
 
   const walk = (node: OrgTreeNode, depth: number) => {
     const level = levels.get(depth) || [];
@@ -33,23 +34,30 @@ function buildLevels(root: OrgTreeNode | null): Map<number, OrgTreeNode[]> {
     }
   };
 
-  walk(root, 0);
+  roots.forEach((root) => walk(root, 0));
   return levels;
 }
 
-export function OrgChart({ employeeId, onNavigate }: OrgChartProps) {
-  const [tree, setTree] = useState<OrgTreeNode | null>(null);
+export function OrgChart({ employeeId, apiPath, onNavigate }: OrgChartProps) {
+  const [roots, setRoots] = useState<OrgTreeNode[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const endpoint = (apiPath || '').trim() || (employeeId ? `/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports` : '');
 
   useEffect(() => {
+    if (!endpoint) {
+      setRoots([]);
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
     const fetchTree = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports`);
+        const res = await fetch(endpoint);
         const json = res.ok ? await res.json() : null;
-        const root = Array.isArray(json?.orgTree) ? json.orgTree[0] : null;
-        if (mounted) setTree(root || null);
+        const orgTree = Array.isArray(json?.orgTree) ? json.orgTree : [];
+        if (mounted) setRoots(orgTree);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -58,11 +66,11 @@ export function OrgChart({ employeeId, onNavigate }: OrgChartProps) {
     return () => {
       mounted = false;
     };
-  }, [employeeId]);
+  }, [endpoint]);
 
   const { nodes, edges } = useMemo(() => {
-    if (!tree) return { nodes: [] as Node[], edges: [] as Edge[] };
-    const levels = buildLevels(tree);
+    if (!roots.length) return { nodes: [] as Node[], edges: [] as Edge[] };
+    const levels = buildLevels(roots);
     const nodesOut: Node[] = [];
     const edgesOut: Edge[] = [];
 
@@ -104,15 +112,15 @@ export function OrgChart({ employeeId, onNavigate }: OrgChartProps) {
       }
     };
 
-    walk(tree);
+    roots.forEach((root) => walk(root));
     return { nodes: nodesOut, edges: edgesOut };
-  }, [tree]);
+  }, [roots]);
 
   if (loading) {
     return <div className="text-sm text-gray-500">Loading org chart...</div>;
   }
 
-  if (!tree) {
+  if (!roots.length) {
     return <div className="text-sm text-gray-500">No org chart data available.</div>;
   }
 

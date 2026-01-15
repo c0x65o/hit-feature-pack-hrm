@@ -132,6 +132,12 @@ export async function GET(request: NextRequest) {
     if (adminAccess.ok) {
       const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (bearer) adminHeaders['Authorization'] = bearer;
+      // Forward cookies + base URL hints in case auth is remote or headers are stripped.
+      const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
+      if (cookieHeader) adminHeaders['Cookie'] = cookieHeader;
+      const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
+      const proto = request.headers.get('x-forwarded-proto') || 'https';
+      if (host) adminHeaders['X-Frontend-Base-URL'] = `${proto}://${host}`;
 
       const adminRes = await fetch(`${authUrl}/users`, {
         method: 'GET',
