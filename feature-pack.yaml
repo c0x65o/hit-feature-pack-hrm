@@ -90,7 +90,7 @@ permissions:
     # - none: deny all access for this verb/entity (hide pages + block APIs)
     # - all: ignore scope (read everything)
     # - own: only owned records (employee.userEmail === current user email)
-    # - ldd: owner OR matching L/D/D (via org_user_assignments)
+    # - location|department|division: records matching the user's org assignment(s) for that dimension (via org_user_assignments)
     #
     # These are mutually exclusive per node; the Security Groups UI renders them as dropdowns.
     - key: hrm.read.scope.none
@@ -99,15 +99,23 @@ permissions:
       default_enabled: false
     - key: hrm.read.scope.all
       label: "HRM Read Scope = All"
-      description: "Read all HRM entities regardless of LDD."
+      description: "Read all HRM entities regardless of org scope."
       default_enabled: false
     - key: hrm.read.scope.own
       label: "HRM Read Scope = Own"
       description: "Read only HRM entities you own (your own employee record)."
       default_enabled: false
-    - key: hrm.read.scope.ldd
-      label: "HRM Read Scope = LDD"
-      description: "Read HRM entities you own, or that match your L/D/D scope."
+    - key: hrm.read.scope.location
+      label: "HRM Read Scope = Location"
+      description: "Read HRM entities in your location."
+      default_enabled: false
+    - key: hrm.read.scope.department
+      label: "HRM Read Scope = Department"
+      description: "Read HRM entities in your department."
+      default_enabled: false
+    - key: hrm.read.scope.division
+      label: "HRM Read Scope = Division"
+      description: "Read HRM entities in your division."
       default_enabled: false
 
     - key: hrm.write.scope.none
@@ -116,15 +124,23 @@ permissions:
       default_enabled: false
     - key: hrm.write.scope.all
       label: "HRM Write Scope = All"
-      description: "Edit HRM entities regardless of LDD."
+      description: "Edit all HRM entities regardless of org scope."
       default_enabled: false
     - key: hrm.write.scope.own
       label: "HRM Write Scope = Own"
       description: "Edit only HRM entities you own (your own employee record)."
       default_enabled: false
-    - key: hrm.write.scope.ldd
-      label: "HRM Write Scope = LDD"
-      description: "Edit HRM entities you own, or that match your L/D/D scope."
+    - key: hrm.write.scope.location
+      label: "HRM Write Scope = Location"
+      description: "Edit HRM entities in your location."
+      default_enabled: false
+    - key: hrm.write.scope.department
+      label: "HRM Write Scope = Department"
+      description: "Edit HRM entities in your department."
+      default_enabled: false
+    - key: hrm.write.scope.division
+      label: "HRM Write Scope = Division"
+      description: "Edit HRM entities in your division."
       default_enabled: false
 
     # Employees override (optional): if set, overrides hrm.read.scope.* for employees only.
@@ -134,15 +150,23 @@ permissions:
       default_enabled: false
     - key: hrm.employees.read.scope.all
       label: "HRM Employees Read Scope = All"
-      description: "Read employees regardless of LDD."
+      description: "Read employees regardless of org scope."
       default_enabled: false
     - key: hrm.employees.read.scope.own
       label: "HRM Employees Read Scope = Own"
       description: "Read only your own employee record."
       default_enabled: false
-    - key: hrm.employees.read.scope.ldd
-      label: "HRM Employees Read Scope = LDD"
-      description: "Read employees you own, or that match your L/D/D scope."
+    - key: hrm.employees.read.scope.location
+      label: "HRM Employees Read Scope = Location"
+      description: "Read employees in your location."
+      default_enabled: false
+    - key: hrm.employees.read.scope.department
+      label: "HRM Employees Read Scope = Department"
+      description: "Read employees in your department."
+      default_enabled: false
+    - key: hrm.employees.read.scope.division
+      label: "HRM Employees Read Scope = Division"
+      description: "Read employees in your division."
       default_enabled: false
 
     - key: hrm.employees.write.scope.none
@@ -151,15 +175,23 @@ permissions:
       default_enabled: false
     - key: hrm.employees.write.scope.all
       label: "HRM Employees Write Scope = All"
-      description: "Edit employees regardless of LDD."
+      description: "Edit employees regardless of org scope."
       default_enabled: false
     - key: hrm.employees.write.scope.own
       label: "HRM Employees Write Scope = Own"
       description: "Edit only your own employee record."
       default_enabled: false
-    - key: hrm.employees.write.scope.ldd
-      label: "HRM Employees Write Scope = LDD"
-      description: "Edit employees you own, or that match your L/D/D scope."
+    - key: hrm.employees.write.scope.location
+      label: "HRM Employees Write Scope = Location"
+      description: "Edit employees in your location."
+      default_enabled: false
+    - key: hrm.employees.write.scope.department
+      label: "HRM Employees Write Scope = Department"
+      description: "Edit employees in your department."
+      default_enabled: false
+    - key: hrm.employees.write.scope.division
+      label: "HRM Employees Write Scope = Division"
+      description: "Edit employees in your division."
       default_enabled: false
 
     - key: hrm.employees.create
