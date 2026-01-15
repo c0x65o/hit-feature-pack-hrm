@@ -59,24 +59,24 @@ routes:
     page: EntityList
     roles: []
     default_roles_allow: [admin]
-    authz: { entity: employees, verb: read }
+    authz: { entity: employees, verb: read, require_action: hrm.employees.access, show_pages: true }
     params: { entityKey: hrm.employee }
   - path: /hrm/org-chart
     page: OrgChart
     roles: []
     default_roles_allow: [admin]
-    authz: { entity: employees, verb: read }
+    authz: { entity: employees, verb: read, require_action: hrm.org-chart.access, show_pages: true }
   - path: /hrm/employees/[id]
     page: EntityDetail
     roles: []
     default_roles_allow: [admin]
-    authz: { entity: employees, verb: read }
+    authz: { entity: employees, verb: read, require_action: hrm.employees.detail.access, show_pages: true }
     params: { entityKey: hrm.employee }
   - path: /hrm/employees/[id]/edit
     page: EntityEdit
     roles: []
     default_roles_allow: [admin]
-    authz: { entity: employees, verb: write }
+    authz: { entity: employees, verb: write, require_action: hrm.employees.edit.access, show_pages: true }
     params: { entityKey: hrm.employee }
 
 nav:
@@ -105,6 +105,24 @@ nav:
 # ─────────────────────────────────────────────────────────────────────────────
 permissions:
   actions:
+    # HRM pages with explicit access toggles.
+    - key: hrm.employees.access
+      label: "HRM: Employees"
+      description: "Access the HRM employees list."
+      default_enabled: false
+    - key: hrm.employees.detail.access
+      label: "HRM: Employee Detail"
+      description: "Access HRM employee detail pages."
+      default_enabled: false
+    - key: hrm.employees.edit.access
+      label: "HRM: Employee Edit"
+      description: "Access HRM employee edit pages."
+      default_enabled: false
+    - key: hrm.org-chart.access
+      label: "HRM: Org Chart"
+      description: "Access the HRM org chart page."
+      default_enabled: false
+
     # Scope Policy Tree: HRM (global) -> entity overrides.
     #
     # Scope modes:
