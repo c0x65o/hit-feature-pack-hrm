@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, desc, eq, inArray, like, or, sql, type AnyColumn } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, like, ne, or, sql, type AnyColumn } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
@@ -318,7 +318,8 @@ export async function GET(request: NextRequest) {
   }
 
   if (managerId) {
-    conditions.push(eq(employees.managerId, managerId as any));
+    // Guard against bad data (self-manager) so "Direct Reports" never includes the parent.
+    conditions.push(and(eq(employees.managerId, managerId as any), ne(employees.id, managerId as any)));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

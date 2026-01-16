@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { and, asc, desc, eq, like, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, like, ne, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
@@ -256,7 +256,8 @@ export async function GET(request) {
             conditions.push(or(like(employees.userEmail, `%${search}%`), like(employees.firstName, `%${search}%`), like(employees.lastName, `%${search}%`), like(employees.preferredName, `%${search}%`)));
         }
         if (managerId) {
-            conditions.push(eq(employees.managerId, managerId));
+            // Guard against bad data (self-manager) so "Direct Reports" never includes the parent.
+            conditions.push(and(eq(employees.managerId, managerId), ne(employees.id, managerId)));
         }
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
         const sortColumns = {

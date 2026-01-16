@@ -163,6 +163,8 @@ export async function PUT(request) {
     const state = optionalString(body?.state);
     const postalCode = optionalString(body?.postalCode);
     const country = optionalString(body?.country);
+    const managerIdRaw = optionalString(body?.managerId);
+    const managerId = managerIdRaw === undefined ? undefined : managerIdRaw;
     const update = {};
     if (firstName !== undefined) {
         if (!firstName)
@@ -191,6 +193,27 @@ export async function PUT(request) {
         update.postalCode = postalCode;
     if (country !== undefined)
         update.country = country;
+    if (managerId !== undefined) {
+        if (managerId === null) {
+            update.managerId = null;
+        }
+        else {
+            const mid = String(managerId).trim();
+            if (!mid) {
+                update.managerId = null;
+            }
+            else {
+                if (mid === String(id)) {
+                    return jsonError('managerId cannot reference the employee itself', 400);
+                }
+                const managerRows = await db.select({ id: employees.id }).from(employees).where(eq(employees.id, mid)).limit(1);
+                if (!managerRows[0]) {
+                    return jsonError('managerId must reference an existing employee', 400);
+                }
+                update.managerId = mid;
+            }
+        }
+    }
     if (Object.keys(update).length === 0)
         return jsonError('No fields to update', 400);
     // Explicitly set updatedAt to avoid $onUpdate serialization issues
