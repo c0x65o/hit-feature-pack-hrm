@@ -94,9 +94,15 @@ nav:
         icon: IdCard
         weight: 10
         showWhen: authenticated
-      - id: hrm-positions
-        label: Positions
-        path: /hrm/positions
-        icon: Briefcase
-        weight: 20
+      - id: hrm-setup
+        label: Setup
+        icon: Settings
+        weight: 100
         showWhen: authenticated
+        children:
+          - id: hrm-positions
+            label: Positions
+            path: /hrm/positions
+            icon: Briefcase
+            weight: 10
+            showWhen: authenticated

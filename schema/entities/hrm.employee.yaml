@@ -118,7 +118,7 @@ entities:
           pickerEndpoint: /api/hrm/employees/picker
           valueField: id
           labelField: displayName
-      isActive: { type: boolean, label: Active }
+      isActive: { type: boolean, label: Active, default: true }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
       address2: { type: text, label: Address Line 2 }
