@@ -33,6 +33,7 @@ export async function GET(request) {
     const sp = url.searchParams;
     const search = (sp.get('search') || '').trim();
     const id = (sp.get('id') || '').trim();
+    const userEmail = (sp.get('userEmail') || '').trim();
     const pageSizeRaw = parseInt(sp.get('pageSize') || sp.get('limit') || '25', 10) || 25;
     const pageSize = Math.min(Math.max(1, pageSizeRaw), 100);
     try {
@@ -42,6 +43,10 @@ export async function GET(request) {
         // If id is provided, fetch a single employee by id (for resolveValue)
         if (id) {
             conditions.push(eq(employees.id, id));
+        }
+        else if (userEmail) {
+            // If userEmail is provided, fetch by email (for resolveValue when valueField=userEmail)
+            conditions.push(eq(employees.userEmail, userEmail));
         }
         else if (search) {
             // Search by name or email

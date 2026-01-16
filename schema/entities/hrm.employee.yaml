@@ -52,9 +52,10 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort:
-        sortBy: lastName
+        sortBy: name
         sortOrder: asc
       sortWhitelist:
+        - name
         - userEmail
         - firstName
         - lastName
@@ -66,6 +67,9 @@ entities:
         - createdAt
         - updatedAt
       initialColumnVisibility:
+        name: true
+        firstName: false
+        lastName: false
         positionName: true
         phone: false
         city: false
@@ -75,6 +79,7 @@ entities:
         createdAt: false
         updatedAt: false
       columns:
+        - name
         - userEmail
         - preferredName
         - firstName
@@ -98,9 +103,16 @@ entities:
           title: Address
           layout: { columns: 2 }
           fields: [address1, address2, city, state, postalCode, country]
+        - id: org-scope
+          title: Org Scope
+          widget: orgAssignment
+          platforms: [web, mobile]
 
     fields:
       id: { type: text, label: ID }
+      # Computed/display convenience field (not a physical column).
+      # Use firstName/lastName for persistence.
+      name: { type: text, label: Name, virtual: true }
       userEmail: { type: email, label: User Email, readOnly: true }
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
