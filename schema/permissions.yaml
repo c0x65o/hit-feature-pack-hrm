@@ -1,0 +1,150 @@
+version: 1
+
+# Schema-owned permission/action catalog for HRM.
+#
+# This replaces legacy `permissions.actions` authored in `feature-pack.yaml`.
+# The route generator merges these actions into `.hit/generated/actions.ts`.
+permissions:
+  packName: hrm
+  packTitle: Human Resources
+  actions:
+    # HRM pages with explicit access toggles.
+    - key: hrm.employees.access
+      label: "HRM: Employees"
+      description: "Access the HRM employees list."
+      default_enabled: false
+    - key: hrm.employees.detail.access
+      label: "HRM: Employee Detail"
+      description: "Access HRM employee detail pages."
+      default_enabled: false
+    - key: hrm.employees.edit.access
+      label: "HRM: Employee Edit"
+      description: "Access HRM employee edit pages."
+      default_enabled: false
+    - key: hrm.employees.photo.self
+      label: "HRM: Update Own Photo"
+      description: "Allow a user to upload/update their own employee profile photo."
+      default_enabled: false
+    - key: hrm.employees.photo.any
+      label: "HRM: Update Employee Photos"
+      description: "Allow updating other employees' profile photos (still constrained by HRM write scope)."
+      default_enabled: false
+    - key: hrm.org-chart.access
+      label: "HRM: Org Chart"
+      description: "Access the HRM org chart page."
+      default_enabled: false
+
+    # Scope Policy Tree: HRM (global) -> entity overrides.
+    #
+    # Scope modes:
+    # - none: deny all access for this verb/entity (hide pages + block APIs)
+    # - all: ignore scope (read everything)
+    # - own: only owned records (employee.userEmail === current user email)
+    # - location|department|division: records matching the user's org assignment(s) for that dimension (via org_user_assignments)
+    #
+    # These are mutually exclusive per node; the Security Groups UI renders them as dropdowns.
+    - key: hrm.read.scope.none
+      label: "HRM Read Scope = None"
+      description: "Deny all HRM read access."
+      default_enabled: false
+    - key: hrm.read.scope.all
+      label: "HRM Read Scope = All"
+      description: "Read all HRM entities regardless of org scope."
+      default_enabled: false
+    - key: hrm.read.scope.own
+      label: "HRM Read Scope = Own"
+      description: "Read only HRM entities you own (your own employee record)."
+      default_enabled: false
+    - key: hrm.read.scope.location
+      label: "HRM Read Scope = Location"
+      description: "Read HRM entities in your location."
+      default_enabled: false
+    - key: hrm.read.scope.department
+      label: "HRM Read Scope = Department"
+      description: "Read HRM entities in your department."
+      default_enabled: false
+    - key: hrm.read.scope.division
+      label: "HRM Read Scope = Division"
+      description: "Read HRM entities in your division."
+      default_enabled: false
+
+    - key: hrm.write.scope.none
+      label: "HRM Write Scope = None"
+      description: "Deny all HRM write access."
+      default_enabled: false
+    - key: hrm.write.scope.all
+      label: "HRM Write Scope = All"
+      description: "Edit all HRM entities regardless of org scope."
+      default_enabled: false
+    - key: hrm.write.scope.own
+      label: "HRM Write Scope = Own"
+      description: "Edit only HRM entities you own (your own employee record)."
+      default_enabled: false
+    - key: hrm.write.scope.location
+      label: "HRM Write Scope = Location"
+      description: "Edit HRM entities in your location."
+      default_enabled: false
+    - key: hrm.write.scope.department
+      label: "HRM Write Scope = Department"
+      description: "Edit HRM entities in your department."
+      default_enabled: false
+    - key: hrm.write.scope.division
+      label: "HRM Write Scope = Division"
+      description: "Edit HRM entities in your division."
+      default_enabled: false
+
+    # Employees override (optional): if set, overrides hrm.read.scope.* for employees only.
+    - key: hrm.employees.read.scope.none
+      label: "HRM Employees Read Scope = None"
+      description: "Deny all employee read access."
+      default_enabled: false
+    - key: hrm.employees.read.scope.all
+      label: "HRM Employees Read Scope = All"
+      description: "Read employees regardless of org scope."
+      default_enabled: false
+    - key: hrm.employees.read.scope.own
+      label: "HRM Employees Read Scope = Own"
+      description: "Read only your own employee record."
+      default_enabled: false
+    - key: hrm.employees.read.scope.location
+      label: "HRM Employees Read Scope = Location"
+      description: "Read employees in your location."
+      default_enabled: false
+    - key: hrm.employees.read.scope.department
+      label: "HRM Employees Read Scope = Department"
+      description: "Read employees in your department."
+      default_enabled: false
+    - key: hrm.employees.read.scope.division
+      label: "HRM Employees Read Scope = Division"
+      description: "Read employees in your division."
+      default_enabled: false
+
+    - key: hrm.employees.write.scope.none
+      label: "HRM Employees Write Scope = None"
+      description: "Deny all employee write access."
+      default_enabled: false
+    - key: hrm.employees.write.scope.all
+      label: "HRM Employees Write Scope = All"
+      description: "Edit employees regardless of org scope."
+      default_enabled: false
+    - key: hrm.employees.write.scope.own
+      label: "HRM Employees Write Scope = Own"
+      description: "Edit only your own employee record."
+      default_enabled: false
+    - key: hrm.employees.write.scope.location
+      label: "HRM Employees Write Scope = Location"
+      description: "Edit employees in your location."
+      default_enabled: false
+    - key: hrm.employees.write.scope.department
+      label: "HRM Employees Write Scope = Department"
+      description: "Edit employees in your department."
+      default_enabled: false
+    - key: hrm.employees.write.scope.division
+      label: "HRM Employees Write Scope = Division"
+      description: "Edit employees in your division."
+      default_enabled: false
+
+    - key: hrm.employees.create
+      label: Create Employee
+      description: "Create a new employee (employees are auto-provisioned, but this action controls access to creation flows)."
+      default_enabled: false

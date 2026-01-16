@@ -19,6 +19,22 @@ entities:
         saveUpdateLabel: Save
         cancelLabel: Cancel
 
+    # Schema-driven page security (source of truth for EntityList/Detail/Edit pages).
+    # This is used by route generation to populate routes-meta.ts authz/roles.
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: employees, verb: read, require_action: hrm.employees.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: employees, verb: read, require_action: hrm.employees.detail.access, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: employees, verb: write, require_action: hrm.employees.edit.access, show_pages: true }
+
     storage:
       # Drizzle table export name (re-exported by the host app's lib/schema.ts)
       drizzleTable: employees
