@@ -1,5 +1,3 @@
-export { EntityList, default as EntityListPage } from './EntityList';
-export { EntityDetail, default as EntityDetailPage } from './EntityDetail';
-export { EntityEdit, default as EntityEditPage } from './EntityEdit';
-export { OrgChart, default as OrgChartPage } from './OrgChart';
-
+// HRM pack uses shared EntityList/EntityDetail/EntityEdit pages from the platform.
+// This file is kept for module resolution compatibility.
+export {};

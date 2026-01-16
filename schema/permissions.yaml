@@ -21,6 +21,10 @@ permissions:
       label: "HRM: Employee Edit"
       description: "Access HRM employee edit pages."
       default_enabled: false
+    - key: hrm.employees.create.access
+      label: "HRM: Employee Create"
+      description: "Access HRM employee creation page."
+      default_enabled: false
     - key: hrm.employees.photo.self
       label: "HRM: Update Own Photo"
       description: "Allow a user to upload/update their own employee profile photo."

@@ -16,6 +16,8 @@ schema:
 # ─────────────────────────────────────────────────────────────────────────────
 # API ROUTES
 # ─────────────────────────────────────────────────────────────────────────────
+# NOTE: CRUD endpoints for schema entities are generated from `schema/entities/* api.resource`
+# via the platform schema CRUD handler. Only "special" endpoints should be declared here.
 api:
   routes:
     - path: /api/hrm/employees/me
@@ -27,16 +29,6 @@ api:
       methods: [GET]
       handler: "@hit/feature-pack-hrm/server/api/directory-users"
       description: "User directory with display names enriched from HRM employees (fallbacks to auth profile_fields/email)."
-
-    - path: /api/hrm/employees
-      methods: [GET]
-      handler: "@hit/feature-pack-hrm/server/api/employees"
-      description: "Admin: list employees (employees are auto-provisioned from auth users)"
-
-    - path: /api/hrm/employees/[id]
-      methods: [GET, PUT]
-      handler: "@hit/feature-pack-hrm/server/api/employees-id"
-      description: "Admin: get/update an employee by id"
 
     - path: /api/hrm/employees/[id]/direct-reports
       methods: [GET]
@@ -53,16 +45,14 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-photo"
       description: "Update employee profile photo (self or admin)"
 
-# Routes (pre-1.0: start Employees UI)
+# Routes (schema-driven UI pages)
 routes:
   - path: /hrm/employees
     page: EntityList
     params: { entityKey: hrm.employee }
-  - path: /hrm/org-chart
-    page: OrgChart
-    roles: []
-    default_roles_allow: [admin]
-    authz: { entity: employees, verb: read, require_action: hrm.org-chart.access, show_pages: true }
+  - path: /hrm/employees/new
+    page: EntityEdit
+    params: { entityKey: hrm.employee }
   - path: /hrm/employees/[id]
     page: EntityDetail
     params: { entityKey: hrm.employee }
@@ -83,10 +73,4 @@ nav:
         path: /hrm/employees
         icon: IdCard
         weight: 10
-        showWhen: authenticated
-      - id: hrm-org-chart
-        label: Org Chart
-        path: /hrm/org-chart
-        icon: Share2
-        weight: 20
         showWhen: authenticated
