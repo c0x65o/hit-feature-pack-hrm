@@ -18,6 +18,7 @@ entities:
         editLabel: Edit Employee
         saveUpdateLabel: Save
         cancelLabel: Cancel
+        allowCreate: false
 
     # Schema-driven page security (source of truth for EntityList/Detail/New/Edit pages).
     # This is used by route generation to populate routes-meta.ts authz/roles.

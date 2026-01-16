@@ -50,9 +50,6 @@ routes:
   - path: /hrm/employees
     page: EntityList
     params: { entityKey: hrm.employee }
-  - path: /hrm/employees/new
-    page: EntityEdit
-    params: { entityKey: hrm.employee }
   - path: /hrm/employees/[id]
     page: EntityDetail
     params: { entityKey: hrm.employee }
