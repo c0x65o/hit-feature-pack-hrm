@@ -39,7 +39,7 @@ function getExternalOriginFromRequest(request) {
 export function getAuthUrlFromRequest(request) {
     // IMPORTANT: server-side fetch() requires an absolute URL.
     const origin = getExternalOriginFromRequest(request);
-    return `${origin}/api/proxy/auth`;
+    return `${origin}/api/auth`;
 }
 export function getForwardedBearerFromRequest(request) {
     const rawTokenHeader = request.headers.get('x-hit-token-raw') || request.headers.get('X-HIT-Token-Raw');

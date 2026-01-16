@@ -47,17 +47,15 @@ function getExternalOriginFromRequest(request) {
 function getAuthProxyBaseUrlFromRequest(request) {
     // Server-side fetch() requires absolute URL.
     const origin = getExternalOriginFromRequest(request);
-    return `${origin}/api/proxy/auth`;
+    // Auth is app-local (Next.js API dispatcher under /api/auth).
+    return `${origin}/api/auth`;
 }
 function getFrontendBaseUrlFromRequest(request) {
     return getExternalOriginFromRequest(request);
 }
 function getAuthBaseUrl(request) {
-    const envUrl = process.env.HIT_AUTH_URL || process.env.NEXT_PUBLIC_HIT_AUTH_URL;
-    if (envUrl && String(envUrl).trim()) {
-        return { baseUrl: String(envUrl).trim().replace(/\/$/, ''), source: 'env' };
-    }
-    return { baseUrl: getAuthProxyBaseUrlFromRequest(request).replace(/\/$/, ''), source: 'proxy' };
+    // No external auth base URL. Always use app-local auth API.
+    return { baseUrl: getAuthProxyBaseUrlFromRequest(request).replace(/\/$/, ''), source: 'local' };
 }
 export function extractUserFromRequest(request) {
     // Check for token in cookie first
@@ -74,7 +72,12 @@ export function extractUserFromRequest(request) {
     if (xUserId) {
         const xUserEmail = request.headers.get('x-user-email') || '';
         const xUserRoles = request.headers.get('x-user-roles');
-        const roles = xUserRoles ? xUserRoles.split(',').map((r) => r.trim()).filter(Boolean) : [];
+        const roles = xUserRoles
+            ? xUserRoles
+                .split(',')
+                .map((r) => r.trim())
+                .filter(Boolean)
+            : [];
         return { sub: xUserId, email: xUserEmail, roles };
     }
     if (!token)
@@ -122,6 +125,13 @@ export function requireAdmin(request) {
 export async function requirePageAccess(request, pagePath) {
     const user = requireAuth(request);
     if (user instanceof NextResponse)
+        return user;
+    // Admins always have access to pages (defaultRolesAllow) and should not be blocked
+    // by transient auth module/proxy outages.
+    const isAdmin = (user.roles || [])
+        .map((r) => String(r || '').trim().toLowerCase())
+        .includes('admin');
+    if (isAdmin)
         return user;
     const bearer = getForwardedBearerFromRequest(request);
     if (!bearer) {
@@ -201,8 +211,8 @@ export async function requirePageAccess(request, pagePath) {
             });
         }
         return NextResponse.json({
-            error: 'Forbidden',
-            code: 'page_access_denied',
+            error: 'Auth service unavailable',
+            code: 'auth_unavailable',
             pagePath,
             authz: {
                 status: null,
@@ -211,6 +221,6 @@ export async function requirePageAccess(request, pagePath) {
                 authBaseUrl: baseUrl,
                 message: e?.message ? String(e.message) : 'Auth check threw',
             },
-        }, { status: 403 });
+        }, { status: 503 });
     }
 }

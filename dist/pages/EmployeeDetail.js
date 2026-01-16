@@ -315,7 +315,7 @@ export function EmployeeDetail({ id, onNavigate }) {
             const emp = await empRes.json();
             setEmployee(emp);
             // Fetch auth user info
-            const authRes = await fetch(`/api/proxy/auth/users/${encodeURIComponent(emp.userEmail)}`, {
+            const authRes = await fetch(`/api/auth/users/${encodeURIComponent(emp.userEmail)}`, {
                 headers: { Authorization: `Bearer ${token}` },
                 credentials: 'include',
             });
@@ -326,7 +326,7 @@ export function EmployeeDetail({ id, onNavigate }) {
                 // Fallback: if auth doesn't provide last_login, infer from sessions.
                 const lastLoginCandidate = String(normalized?.last_login || normalized?.lastLogin || '').trim();
                 if (!lastLoginCandidate) {
-                    const sessionsRes = await fetch(`/api/proxy/auth/admin/users/${encodeURIComponent(emp.userEmail)}/sessions?limit=20&offset=0`, {
+                    const sessionsRes = await fetch(`/api/auth/admin/users/${encodeURIComponent(emp.userEmail)}/sessions?limit=20&offset=0`, {
                         headers: { Authorization: `Bearer ${token}` },
                         credentials: 'include',
                     });
@@ -341,7 +341,7 @@ export function EmployeeDetail({ id, onNavigate }) {
                 }
             }
             // Fetch effective permissions (includes groups, role)
-            const permsRes = await fetch(`/api/proxy/auth/admin/permissions/users/${encodeURIComponent(emp.userEmail)}/effective`, {
+            const permsRes = await fetch(`/api/auth/admin/permissions/users/${encodeURIComponent(emp.userEmail)}/effective`, {
                 headers: { Authorization: `Bearer ${token}` },
                 credentials: 'include',
             });

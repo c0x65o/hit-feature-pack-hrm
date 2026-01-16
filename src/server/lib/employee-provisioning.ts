@@ -45,7 +45,7 @@ function getExternalOriginFromRequest(request: NextRequest): string {
 export function getAuthUrlFromRequest(request: NextRequest): string {
   // IMPORTANT: server-side fetch() requires an absolute URL.
   const origin = getExternalOriginFromRequest(request);
-  return `${origin}/api/proxy/auth`;
+  return `${origin}/api/auth`;
 }
 
 export function getForwardedBearerFromRequest(request: NextRequest): string {
