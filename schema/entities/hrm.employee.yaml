@@ -35,6 +35,9 @@ entities:
         default_roles_allow: [admin]
         authz: { entity: employees, verb: write, require_action: hrm.employees.edit.access, show_pages: true }
 
+    api:
+      resource: employees
+
     storage:
       # Drizzle table export name (re-exported by the host app's lib/schema.ts)
       drizzleTable: employees
