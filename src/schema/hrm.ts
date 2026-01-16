@@ -4,6 +4,39 @@ import { z } from 'zod';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 
 /**
+ * Positions
+ *
+ * Job positions/titles that can be assigned to employees.
+ * Simple entity for now - just a name. Can be extended with department, level, etc.
+ */
+export const positions = pgTable(
+  'hrm_positions',
+  {
+    id: uuid('id').primaryKey().defaultRandom().notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => ({
+    nameIdx: index('hrm_positions_name_idx').on(table.name),
+  })
+);
+
+export const PositionSchema = createSelectSchema(positions);
+export const InsertPositionSchema = createInsertSchema(positions, {
+  name: z.string().min(1).max(255),
+  isActive: z.boolean().optional(),
+});
+
+export type Position = typeof positions.$inferSelect;
+export type InsertPosition = typeof positions.$inferInsert;
+export type UpdatePosition = Partial<Omit<InsertPosition, 'id' | 'createdAt' | 'updatedAt'>>;
+
+/**
  * Employees
  *
  * Pre-1.0: this is the canonical place for human name (first/last/preferred) in ERP contexts.
@@ -24,6 +57,9 @@ export const employees = pgTable(
 
     /** Employee manager (self-referential). */
     managerId: uuid('manager_id'),
+
+    /** Employee position/job title. */
+    positionId: uuid('position_id'),
 
     // Contact information
     phone: varchar('phone', { length: 50 }),
@@ -53,6 +89,12 @@ export const employees = pgTable(
       foreignColumns: [table.id],
       name: 'hrm_employees_manager_fk',
     }).onDelete('set null'),
+    positionIdx: index('hrm_employees_position_idx').on(table.positionId),
+    positionFk: foreignKey({
+      columns: [table.positionId],
+      foreignColumns: [positions.id],
+      name: 'hrm_employees_position_fk',
+    }).onDelete('set null'),
   })
 );
 
@@ -64,6 +106,7 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
   preferredName: z.string().min(1).optional(),
   profilePictureUrl: z.string().optional(),
   managerId: z.string().uuid().optional(),
+  positionId: z.string().uuid().optional(),
   phone: z.string().max(50).optional(),
   address1: z.string().max(255).optional(),
   address2: z.string().max(255).optional(),

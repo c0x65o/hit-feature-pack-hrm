@@ -81,7 +81,7 @@ export function EntityDetailBody({
   uiSpec: any;
   record: any;
   navigate?: (path: string) => void;
-}) {
+}): React.ReactElement {
   const { Card, Tabs, Alert } = useUi();
   const detailSpec = asRecord(uiSpec?.detail) || {};
   const { linkedEntityTabs, extras } = splitLinkedEntityTabsExtra((detailSpec as any).extras);

@@ -8,6 +8,10 @@ description: HRM feature pack (employee directory + future payroll/benefits/perf
 schema:
   source: src/schema/hrm.ts
   exports:
+    - positions
+    - Position
+    - InsertPosition
+    - UpdatePosition
     - employees
     - Employee
     - InsertEmployee
@@ -45,8 +49,27 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-photo"
       description: "Update employee profile photo (self or admin)"
 
+    - path: /api/hrm/employees/picker
+      methods: [GET]
+      handler: "@hit/feature-pack-hrm/server/api/employees-picker"
+      description: "Lightweight employee picker for autocomplete. Requires hrm.employees.picker permission."
+
 # Routes (schema-driven UI pages)
 routes:
+  # Positions
+  - path: /hrm/positions
+    page: EntityList
+    params: { entityKey: hrm.position }
+  - path: /hrm/positions/new
+    page: EntityEdit
+    params: { entityKey: hrm.position }
+  - path: /hrm/positions/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.position }
+  - path: /hrm/positions/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.position }
+  # Employees
   - path: /hrm/employees
     page: EntityList
     params: { entityKey: hrm.employee }
@@ -70,4 +93,10 @@ nav:
         path: /hrm/employees
         icon: IdCard
         weight: 10
+        showWhen: authenticated
+      - id: hrm-positions
+        label: Positions
+        path: /hrm/positions
+        icon: Briefcase
+        weight: 20
         showWhen: authenticated

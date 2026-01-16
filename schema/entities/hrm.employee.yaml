@@ -66,6 +66,7 @@ entities:
         - createdAt
         - updatedAt
       initialColumnVisibility:
+        positionName: true
         phone: false
         city: false
         state: false
@@ -78,6 +79,7 @@ entities:
         - preferredName
         - firstName
         - lastName
+        - positionName
         - isActive
         - phone
         - city
@@ -91,7 +93,7 @@ entities:
         - id: basics
           title: Basics
           layout: { columns: 2 }
-          fields: [userEmail, firstName, lastName, preferredName, managerId, phone]
+          fields: [userEmail, firstName, lastName, preferredName, positionId, managerId, phone]
         - id: address
           title: Address
           layout: { columns: 2 }
@@ -103,7 +105,19 @@ entities:
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
       preferredName: { type: text, label: Preferred Name }
-      managerId: { type: reference, label: Manager, reference: { entityType: hrm.employee } }
+      positionId:
+        type: select
+        label: Position
+        optionSource: hrm.positions
+      positionName: { type: text, label: Position, virtual: true }
+      managerId:
+        type: reference
+        label: Manager
+        reference:
+          entityType: hrm.employee
+          pickerEndpoint: /api/hrm/employees/picker
+          valueField: id
+          labelField: displayName
       isActive: { type: boolean, label: Active }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
@@ -125,6 +139,7 @@ entities:
         - preferredName
         - firstName
         - lastName
+        - positionName
         - managerId
         - phone
         - address1

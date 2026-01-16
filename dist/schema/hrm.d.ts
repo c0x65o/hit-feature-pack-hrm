@@ -1,5 +1,289 @@
 import { z } from 'zod';
 /**
+ * Positions
+ *
+ * Job positions/titles that can be assigned to employees.
+ * Simple entity for now - just a name. Can be extended with department, level, etc.
+ */
+export declare const positions: import("drizzle-orm/pg-core").PgTableWithColumns<{
+    name: "hrm_positions";
+    schema: undefined;
+    columns: {
+        id: import("drizzle-orm/pg-core").PgColumn<{
+            name: "id";
+            tableName: "hrm_positions";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: true;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        name: import("drizzle-orm/pg-core").PgColumn<{
+            name: "name";
+            tableName: "hrm_positions";
+            dataType: "string";
+            columnType: "PgVarchar";
+            data: string;
+            driverParam: string;
+            notNull: true;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: [string, ...string[]];
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {
+            length: 255;
+        }>;
+        isActive: import("drizzle-orm/pg-core").PgColumn<{
+            name: "is_active";
+            tableName: "hrm_positions";
+            dataType: "boolean";
+            columnType: "PgBoolean";
+            data: boolean;
+            driverParam: boolean;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        createdAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "created_at";
+            tableName: "hrm_positions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+            name: "updated_at";
+            tableName: "hrm_positions";
+            dataType: "date";
+            columnType: "PgTimestamp";
+            data: Date;
+            driverParam: string;
+            notNull: true;
+            hasDefault: true;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+    };
+    dialect: "pg";
+}>;
+export declare const PositionSchema: import("drizzle-zod").BuildSchema<"select", {
+    id: import("drizzle-orm/pg-core").PgColumn<{
+        name: "id";
+        tableName: "hrm_positions";
+        dataType: "string";
+        columnType: "PgUUID";
+        data: string;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: true;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    name: import("drizzle-orm/pg-core").PgColumn<{
+        name: "name";
+        tableName: "hrm_positions";
+        dataType: "string";
+        columnType: "PgVarchar";
+        data: string;
+        driverParam: string;
+        notNull: true;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {
+        length: 255;
+    }>;
+    isActive: import("drizzle-orm/pg-core").PgColumn<{
+        name: "is_active";
+        tableName: "hrm_positions";
+        dataType: "boolean";
+        columnType: "PgBoolean";
+        data: boolean;
+        driverParam: boolean;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    createdAt: import("drizzle-orm/pg-core").PgColumn<{
+        name: "created_at";
+        tableName: "hrm_positions";
+        dataType: "date";
+        columnType: "PgTimestamp";
+        data: Date;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+        name: "updated_at";
+        tableName: "hrm_positions";
+        dataType: "date";
+        columnType: "PgTimestamp";
+        data: Date;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+}, undefined>;
+export declare const InsertPositionSchema: import("drizzle-zod").BuildSchema<"insert", {
+    id: import("drizzle-orm/pg-core").PgColumn<{
+        name: "id";
+        tableName: "hrm_positions";
+        dataType: "string";
+        columnType: "PgUUID";
+        data: string;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: true;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    name: import("drizzle-orm/pg-core").PgColumn<{
+        name: "name";
+        tableName: "hrm_positions";
+        dataType: "string";
+        columnType: "PgVarchar";
+        data: string;
+        driverParam: string;
+        notNull: true;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: [string, ...string[]];
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {
+        length: 255;
+    }>;
+    isActive: import("drizzle-orm/pg-core").PgColumn<{
+        name: "is_active";
+        tableName: "hrm_positions";
+        dataType: "boolean";
+        columnType: "PgBoolean";
+        data: boolean;
+        driverParam: boolean;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    createdAt: import("drizzle-orm/pg-core").PgColumn<{
+        name: "created_at";
+        tableName: "hrm_positions";
+        dataType: "date";
+        columnType: "PgTimestamp";
+        data: Date;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+    updatedAt: import("drizzle-orm/pg-core").PgColumn<{
+        name: "updated_at";
+        tableName: "hrm_positions";
+        dataType: "date";
+        columnType: "PgTimestamp";
+        data: Date;
+        driverParam: string;
+        notNull: true;
+        hasDefault: true;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
+}, {
+    name: z.ZodString;
+    isActive: z.ZodOptional<z.ZodBoolean>;
+}>;
+export type Position = typeof positions.$inferSelect;
+export type InsertPosition = typeof positions.$inferInsert;
+export type UpdatePosition = Partial<Omit<InsertPosition, 'id' | 'createdAt' | 'updatedAt'>>;
+/**
  * Employees
  *
  * Pre-1.0: this is the canonical place for human name (first/last/preferred) in ERP contexts.
@@ -121,6 +405,23 @@ export declare const employees: import("drizzle-orm/pg-core").PgTableWithColumns
         }, {}, {}>;
         managerId: import("drizzle-orm/pg-core").PgColumn<{
             name: "manager_id";
+            tableName: "hrm_employees";
+            dataType: "string";
+            columnType: "PgUUID";
+            data: string;
+            driverParam: string;
+            notNull: false;
+            hasDefault: false;
+            isPrimaryKey: false;
+            isAutoincrement: false;
+            hasRuntimeDefault: false;
+            enumValues: undefined;
+            baseColumn: never;
+            identity: undefined;
+            generated: undefined;
+        }, {}, {}>;
+        positionId: import("drizzle-orm/pg-core").PgColumn<{
+            name: "position_id";
             tableName: "hrm_employees";
             dataType: "string";
             columnType: "PgUUID";
@@ -451,6 +752,23 @@ export declare const EmployeeSchema: import("drizzle-zod").BuildSchema<"select",
         identity: undefined;
         generated: undefined;
     }, {}, {}>;
+    positionId: import("drizzle-orm/pg-core").PgColumn<{
+        name: "position_id";
+        tableName: "hrm_employees";
+        dataType: "string";
+        columnType: "PgUUID";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     phone: import("drizzle-orm/pg-core").PgColumn<{
         name: "phone";
         tableName: "hrm_employees";
@@ -764,6 +1082,23 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
         identity: undefined;
         generated: undefined;
     }, {}, {}>;
+    positionId: import("drizzle-orm/pg-core").PgColumn<{
+        name: "position_id";
+        tableName: "hrm_employees";
+        dataType: "string";
+        columnType: "PgUUID";
+        data: string;
+        driverParam: string;
+        notNull: false;
+        hasDefault: false;
+        isPrimaryKey: false;
+        isAutoincrement: false;
+        hasRuntimeDefault: false;
+        enumValues: undefined;
+        baseColumn: never;
+        identity: undefined;
+        generated: undefined;
+    }, {}, {}>;
     phone: import("drizzle-orm/pg-core").PgColumn<{
         name: "phone";
         tableName: "hrm_employees";
@@ -955,6 +1290,7 @@ export declare const InsertEmployeeSchema: import("drizzle-zod").BuildSchema<"in
     preferredName: z.ZodOptional<z.ZodString>;
     profilePictureUrl: z.ZodOptional<z.ZodString>;
     managerId: z.ZodOptional<z.ZodString>;
+    positionId: z.ZodOptional<z.ZodString>;
     phone: z.ZodOptional<z.ZodString>;
     address1: z.ZodOptional<z.ZodString>;
     address2: z.ZodOptional<z.ZodString>;

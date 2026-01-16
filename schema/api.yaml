@@ -35,3 +35,9 @@ api:
       methods: [PUT]
       handler: employees-photo
       description: "Update employee profile photo (self or admin)"
+
+    # Employee picker (for reference fields in other entities)
+    - path: /api/hrm/employees/picker
+      methods: [GET]
+      handler: employees-picker
+      description: "Lightweight employee picker for autocomplete. Requires hrm.employees.picker permission."

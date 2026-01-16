@@ -152,3 +152,21 @@ permissions:
       label: Create Employee
       description: "Create a new employee (employees are auto-provisioned, but this action controls access to creation flows)."
       default_enabled: false
+
+    # Employee picker permission (for reference fields in other entities)
+    - key: hrm.employees.picker
+      label: "HRM: Employee Picker"
+      description: "Search employees via autocomplete picker (for manager fields in org dimensions, etc.). Does not grant access to the full HRM employee list or details."
+      default_enabled: true
+
+    # ─────────────────────────────────────────────────────────────────────────────
+    # POSITIONS
+    # ─────────────────────────────────────────────────────────────────────────────
+    - key: hrm.positions.access
+      label: "HRM: Positions"
+      description: "Access the HRM positions list."
+      default_enabled: false
+    - key: hrm.positions.manage
+      label: "HRM: Manage Positions"
+      description: "Create, edit, and delete positions."
+      default_enabled: false

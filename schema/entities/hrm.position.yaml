@@ -1,0 +1,95 @@
+version: 1
+
+entities:
+  hrm.position:
+    meta:
+      titleSingular: Position
+      titlePlural: Positions
+      descriptionPlural: Job positions and titles
+      routes:
+        root: /hrm
+        list: /hrm/positions
+        new: /hrm/positions/new
+        detail: /hrm/positions/{id}
+        edit: /hrm/positions/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: Positions, href: /hrm/positions }
+      actions:
+        createLabel: New Position
+        editLabel: Edit Position
+        saveCreateLabel: Create Position
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete Position
+        deleteConfirmBody: Are you sure you want to delete "{name}"? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: positions, verb: read, require_action: hrm.positions.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: positions, verb: read, require_action: hrm.positions.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: positions, verb: write, require_action: hrm.positions.manage, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: positions, verb: write, require_action: hrm.positions.manage, show_pages: true }
+
+    api:
+      resource: positions
+
+    storage:
+      drizzleTable: positions
+
+    list:
+      tableId: hrm.positions
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort:
+        sortBy: name
+        sortOrder: asc
+      sortWhitelist:
+        - name
+        - isActive
+        - createdAt
+        - updatedAt
+      initialColumnVisibility:
+        name: true
+        isActive: true
+        createdAt: false
+        updatedAt: false
+      columns:
+        - name
+        - isActive
+        - createdAt
+        - updatedAt
+
+    form:
+      sections:
+        - id: basics
+          title: Position Details
+          layout: { columns: 1 }
+          fields: [name, isActive]
+
+    fields:
+      id: { type: text, label: ID }
+      name: { type: text, label: Position Name, required: true, placeholder: "e.g., Software Engineer" }
+      isActive: { type: boolean, label: Active, default: true }
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: Position Details
+      summaryFields:
+        - name
+        - isActive
+        - createdAt
+        - updatedAt
