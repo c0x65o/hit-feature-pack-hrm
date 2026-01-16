@@ -170,3 +170,7 @@ permissions:
       label: "HRM: Manage Positions"
       description: "Create, edit, and delete positions."
       default_enabled: false
+    - key: hrm.positions.create
+      label: "HRM: Create Position"
+      description: "Create new positions (required by require_create authz flag)."
+      default_enabled: true
