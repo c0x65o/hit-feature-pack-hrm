@@ -6,6 +6,8 @@ import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataTableColumns } from './entityTable';
 import type { EmbeddedTableSpec } from './EmbeddedEntityTable';
 
+type SortOrder = 'asc' | 'desc';
+
 function readParentField(spec: EmbeddedTableSpec, parent: any, queryKey: string): string | null {
   const q = (spec?.query || {}) as any;
   const m = q?.[queryKey];
@@ -19,6 +21,38 @@ function readParentField(spec: EmbeddedTableSpec, parent: any, queryKey: string)
   return s || null;
 }
 
+function sortItems(items: any[], sortBy: string, sortOrder: SortOrder) {
+  const key = String(sortBy || '').trim();
+  if (!key) return items;
+  const dir = sortOrder === 'desc' ? -1 : 1;
+  return [...items].sort((a, b) => {
+    const av = a?.[key];
+    const bv = b?.[key];
+    const as = av == null ? '' : String(av).toLowerCase();
+    const bs = bv == null ? '' : String(bv).toLowerCase();
+    if (as < bs) return -1 * dir;
+    if (as > bs) return 1 * dir;
+    return 0;
+  });
+}
+
+function filterItemsBySearch(items: any[], search: string) {
+  const q = String(search || '').trim().toLowerCase();
+  if (!q) return items;
+  // Keep it simple: match common employee fields.
+  return items.filter((x) => {
+    const hay = [
+      x?.userEmail,
+      x?.firstName,
+      x?.lastName,
+      x?.preferredName,
+    ]
+      .filter((v) => v != null)
+      .map((v) => String(v).toLowerCase());
+    return hay.some((s) => s.includes(q));
+  });
+}
+
 export function HrmEmployeesEmbeddedTable({
   spec,
   parent,
@@ -30,7 +64,8 @@ export function HrmEmployeesEmbeddedTable({
 }) {
   const { Card, DataTable, Spinner } = useUi();
 
-  const managerId = readParentField(spec, parent, 'managerId') || String(parent?.id || '').trim();
+  const employeeId = String(parent?.id || '').trim();
+  const managerId = readParentField(spec, parent, 'managerId') || employeeId;
   const employeeUiSpec = useEntityUiSpec('hrm.employee');
   const employeeListSpec = (employeeUiSpec as any)?.list || null;
   const routes = (employeeUiSpec as any)?.meta?.routes || {};
@@ -47,33 +82,44 @@ export function HrmEmployeesEmbeddedTable({
   const [loading, setLoading] = React.useState<boolean>(true);
 
   const fetchData = React.useCallback(async () => {
-    if (!managerId) return;
+    if (!employeeId) return;
     setLoading(true);
     try {
-      const q = new URLSearchParams();
-      q.set('page', String(serverTable.query.page));
-      q.set('pageSize', String(serverTable.query.pageSize));
-      q.set('managerId', managerId);
-      if (serverTable.query.search) q.set('search', serverTable.query.search);
-      if (serverTable.query.sortBy) q.set('sortBy', serverTable.query.sortBy);
-      if (serverTable.query.sortOrder) q.set('sortOrder', serverTable.query.sortOrder);
-
-      const res = await fetch(`/api/hrm/employees?${q.toString()}`);
+      // NOTE: /api/hrm/employees is implemented by the app's schema CRUD handler in this app,
+      // and it ignores managerId filtering. For direct reports we must use the dedicated endpoint.
+      const res = await fetch(`/api/hrm/employees/${encodeURIComponent(employeeId)}/direct-reports`);
       const json = res.ok ? await res.json() : null;
+      const raw = Array.isArray(json?.directReports) ? json.directReports : [];
+
+      // Defensive: if bad data exists (self-manager), don't show the parent as its own report.
+      const sanitized = raw.filter((x: any) => String(x?.id || '') !== employeeId);
+
+      const searched = filterItemsBySearch(sanitized, serverTable.query.search || '');
+      const sortBy = String(serverTable.query.sortBy || employeeListSpec?.initialSort?.sortBy || 'lastName');
+      const sortOrder = (String(serverTable.query.sortOrder || employeeListSpec?.initialSort?.sortOrder || 'asc') as SortOrder) || 'asc';
+      const sorted = sortItems(searched, sortBy, sortOrder);
+
+      const page = Number(serverTable.query.page || 1);
+      const pageSize = Number(serverTable.query.pageSize || 25);
+      const start = (page - 1) * pageSize;
+      const pageItems = sorted.slice(start, start + pageSize);
+
       setData({
-        items: json?.items || [],
-        pagination: json?.pagination || { total: 0 },
+        items: pageItems,
+        pagination: { total: sorted.length },
       });
     } finally {
       setLoading(false);
     }
   }, [
-    managerId,
+    employeeId,
     serverTable.query.page,
     serverTable.query.pageSize,
     serverTable.query.search,
     serverTable.query.sortBy,
     serverTable.query.sortOrder,
+    employeeListSpec?.initialSort?.sortBy,
+    employeeListSpec?.initialSort?.sortOrder,
   ]);
 
   React.useEffect(() => {

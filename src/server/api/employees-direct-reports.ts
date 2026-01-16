@@ -227,7 +227,8 @@ export async function GET(request: NextRequest) {
   }
 
   for (const node of nodesById.values()) {
-    if (node.managerId && nodesById.has(node.managerId)) {
+    // Prevent self-cycles (employee.managerId === employee.id) from making the root its own child.
+    if (node.managerId && node.managerId !== node.id && nodesById.has(node.managerId)) {
       nodesById.get(node.managerId)!.children.push(node);
     }
   }
