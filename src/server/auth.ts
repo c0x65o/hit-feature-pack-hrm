@@ -86,20 +86,6 @@ export function extractUserFromRequest(request: NextRequest): User | null {
     }
   }
 
-  // Fall back to x-user-* headers (set by proxy in production)
-  const xUserId = request.headers.get('x-user-id');
-  if (xUserId) {
-    const xUserEmail = request.headers.get('x-user-email') || '';
-    const xUserRoles = request.headers.get('x-user-roles');
-    const roles = xUserRoles
-      ? xUserRoles
-          .split(',')
-          .map((r: string) => r.trim())
-          .filter(Boolean)
-      : [];
-    return { sub: xUserId, email: xUserEmail, roles };
-  }
-
   if (!token) return null;
 
   try {
