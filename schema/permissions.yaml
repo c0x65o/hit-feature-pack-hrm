@@ -28,7 +28,7 @@ permissions:
     - key: hrm.employees.photo.self
       label: "HRM: Update Own Photo"
       description: "Allow a user to upload/update their own employee profile photo."
-      default_enabled: false
+      default_enabled: true
     - key: hrm.employees.photo.any
       label: "HRM: Update Employee Photos"
       description: "Allow updating other employees' profile photos (still constrained by HRM write scope)."

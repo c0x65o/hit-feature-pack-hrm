@@ -14,7 +14,7 @@ entities:
         edit: /hrm/positions/{id}/edit
       breadcrumbs:
         - { label: HRM, href: /hrm }
-        - { label: Setup }
+        - { label: Setup, href: /hrm/positions }
         - { label: Positions, href: /hrm/positions }
       actions:
         createLabel: New Position

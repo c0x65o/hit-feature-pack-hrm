@@ -86,8 +86,8 @@ export async function GET(request) {
             return {
                 ...u,
                 employee: employee ? { ...employee } : null,
-                // Prefer HRM-owned photo; fall back to auth directory's photo if present.
-                profile_picture_url: employee?.profilePictureUrl ?? u?.profile_picture_url ?? null,
+                // Profile photos are owned by HRM employees.
+                profile_picture_url: employee?.profilePictureUrl ?? null,
                 // Keep a normalized displayName field for convenience (callers can still compute their own).
                 displayName: employeeDisplayName || u?.displayName || null,
             };
