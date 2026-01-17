@@ -88,8 +88,8 @@ entities:
         label: Active
         default: true
         options:
-          - { value: "true", label: Yes }
-          - { value: "false", label: No }
+          - { value: "true", label: "Yes" }
+          - { value: "false", label: "No" }
       createdAt: { type: datetime, label: Created }
       updatedAt: { type: datetime, label: Updated }
 
