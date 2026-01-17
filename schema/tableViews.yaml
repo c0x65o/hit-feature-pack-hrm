@@ -1,0 +1,22 @@
+version: 1
+
+# Static (schema-defined) DataTable views for HRM entities.
+#
+# These are "system/default" views that are not stored in the DB.
+# The API merges them alongside user-defined/shared views from `table_views`.
+
+tableViews:
+  hrm.employee:
+    - id: hrm.employee.active
+      name: Active Employees
+      description: Only active employees
+      isDefault: true
+      filters:
+        - field: isActive
+          operator: equals
+          value: true
+          valueType: boolean
+      mobileColumns:
+        - name
+        - userEmail
+        - phone

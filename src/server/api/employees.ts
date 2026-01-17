@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, desc, eq, inArray, like, ne, or, sql, type AnyColumn } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
-import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import {
   getAuthUrlFromRequest,
@@ -222,6 +222,14 @@ export async function GET(request: NextRequest) {
       authDirectorySource = 'directory';
     }
 
+    const currentEmail = String(user?.email || '').trim().toLowerCase();
+    if (currentEmail) {
+      const hasCurrent = users.some((u: any) => String(u?.email || '').trim().toLowerCase() === currentEmail);
+      if (!hasCurrent) {
+        users.push({ email: currentEmail, isActive: true });
+      }
+    }
+
     provisionMeta.authDirectoryStatus = authDirectoryStatus;
     provisionMeta.authDirectoryPath = authDirectoryPath;
     provisionMeta.authDirectorySource = authDirectorySource;
@@ -329,6 +337,7 @@ export async function GET(request: NextRequest) {
     firstName: employees.firstName,
     lastName: employees.lastName,
     preferredName: employees.preferredName,
+    positionName: positions.name,
     phone: employees.phone,
     city: employees.city,
     state: employees.state,
@@ -352,6 +361,8 @@ export async function GET(request: NextRequest) {
     firstName: string;
     lastName: string;
     preferredName: string | null;
+    positionId: string | null;
+    positionName: string | null;
     phone: string | null;
     city: string | null;
     state: string | null;
@@ -368,6 +379,8 @@ export async function GET(request: NextRequest) {
       firstName: employees.firstName,
       lastName: employees.lastName,
       preferredName: employees.preferredName,
+      positionId: employees.positionId,
+      positionName: positions.name,
       phone: employees.phone,
       city: employees.city,
       state: employees.state,
@@ -376,7 +389,8 @@ export async function GET(request: NextRequest) {
       createdAt: employees.createdAt,
       updatedAt: employees.updatedAt,
     })
-    .from(employees);
+    .from(employees)
+    .leftJoin(positions, eq(employees.positionId, positions.id));
 
   const employeeRows: EmployeeRow[] = whereClause
     ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)

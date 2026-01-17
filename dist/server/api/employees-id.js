@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
@@ -87,6 +87,15 @@ export async function GET(request) {
     if (!canAccess) {
         return jsonError('Employee not found', 404);
     }
+    let positionName = null;
+    if (employee.positionId) {
+        const pos = await db
+            .select({ name: positions.name })
+            .from(positions)
+            .where(eq(positions.id, employee.positionId))
+            .limit(1);
+        positionName = pos[0]?.name ?? null;
+    }
     // Enrich with LDD display names (best-effort; org tables may not exist yet).
     let divisionName = null;
     let departmentName = null;
@@ -117,7 +126,7 @@ export async function GET(request) {
     catch {
         // ignore enrichment errors
     }
-    return NextResponse.json({ ...employee, divisionName, departmentName, locationName });
+    return NextResponse.json({ ...employee, positionName, divisionName, departmentName, locationName });
 }
 /**
  * PUT /api/hrm/employees/[id]
@@ -163,6 +172,8 @@ export async function PUT(request) {
     const state = optionalString(body?.state);
     const postalCode = optionalString(body?.postalCode);
     const country = optionalString(body?.country);
+    const positionIdRaw = optionalString(body?.positionId);
+    const positionId = positionIdRaw === undefined ? undefined : positionIdRaw;
     const managerIdRaw = optionalString(body?.managerId);
     const managerId = managerIdRaw === undefined ? undefined : managerIdRaw;
     const update = {};
@@ -193,6 +204,24 @@ export async function PUT(request) {
         update.postalCode = postalCode;
     if (country !== undefined)
         update.country = country;
+    if (positionId !== undefined) {
+        if (positionId === null) {
+            update.positionId = null;
+        }
+        else {
+            const pid = String(positionId).trim();
+            if (!pid) {
+                update.positionId = null;
+            }
+            else {
+                const positionRows = await db.select({ id: positions.id }).from(positions).where(eq(positions.id, pid)).limit(1);
+                if (!positionRows[0]) {
+                    return jsonError('positionId must reference an existing position', 400);
+                }
+                update.positionId = pid;
+            }
+        }
+    }
     if (managerId !== undefined) {
         if (managerId === null) {
             update.managerId = null;

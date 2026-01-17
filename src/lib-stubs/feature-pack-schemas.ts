@@ -11,6 +11,10 @@ export {
   type Employee,
   type InsertEmployee,
   type UpdateEmployee,
+  positions,
+  type Position,
+  type InsertPosition,
+  type UpdatePosition,
 } from '../schema/hrm';
 
 // Cross-pack tables used by HRM server routes during compilation.

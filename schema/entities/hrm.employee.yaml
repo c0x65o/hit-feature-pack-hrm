@@ -59,6 +59,7 @@ entities:
         - userEmail
         - firstName
         - lastName
+        - positionName
         - preferredName
         - phone
         - city
@@ -70,6 +71,7 @@ entities:
         name: true
         firstName: false
         lastName: false
+        positionName: true
         phone: false
         city: false
         state: false
@@ -83,6 +85,7 @@ entities:
         - preferredName
         - firstName
         - lastName
+        - positionName
         - isActive
         - phone
         - city

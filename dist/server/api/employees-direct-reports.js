@@ -189,7 +189,16 @@ export async function GET(request) {
     if (!root) {
         return NextResponse.json({ directReports: [], orgTree: [] });
     }
-    const directReports = root.children.map((child) => ({
+    const rootEmail = String(employee?.userEmail || '').trim().toLowerCase();
+    const directReports = root.children
+        .filter((child) => String(child.id) !== String(id))
+        .filter((child) => {
+        if (!rootEmail)
+            return true;
+        const childEmail = String(child.userEmail || '').trim().toLowerCase();
+        return childEmail ? childEmail !== rootEmail : true;
+    })
+        .map((child) => ({
         ...child,
         children: [],
     }));

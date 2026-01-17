@@ -238,10 +238,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ directReports: [], orgTree: [] });
   }
 
-  const directReports = root.children.map((child) => ({
-    ...child,
-    children: [],
-  }));
+  const rootEmail = String((employee as any)?.userEmail || '').trim().toLowerCase();
+  const directReports = root.children
+    .filter((child) => String(child.id) !== String(id))
+    .filter((child) => {
+      if (!rootEmail) return true;
+      const childEmail = String(child.userEmail || '').trim().toLowerCase();
+      return childEmail ? childEmail !== rootEmail : true;
+    })
+    .map((child) => ({
+      ...child,
+      children: [],
+    }));
 
   return NextResponse.json({
     directReports,

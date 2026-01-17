@@ -16,7 +16,7 @@ api:
     - path: /api/hrm/directory/users
       methods: [GET]
       handler: directory-users
-      description: "User directory with display names enriched from HRM employees (fallbacks to auth profile_fields/email)."
+      description: "User directory with display names enriched from HRM employees."
 
     # Direct reports for an employee
     - path: /api/hrm/employees/[id]/direct-reports
