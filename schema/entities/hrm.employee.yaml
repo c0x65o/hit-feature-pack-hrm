@@ -70,7 +70,6 @@ entities:
         name: true
         firstName: false
         lastName: false
-        positionName: true
         phone: false
         city: false
         state: false
@@ -84,7 +83,6 @@ entities:
         - preferredName
         - firstName
         - lastName
-        - positionName
         - isActive
         - phone
         - city
@@ -121,7 +119,23 @@ entities:
         type: select
         label: Position
         optionSource: hrm.positions
+        labelFromRow: positionName
       positionName: { type: text, label: Position, virtual: true }
+      divisionId:
+        type: select
+        label: Division
+        optionSource: org.divisions
+        virtual: true
+      departmentId:
+        type: select
+        label: Department
+        optionSource: org.departments
+        virtual: true
+      locationId:
+        type: select
+        label: Location
+        optionSource: org.locations
+        virtual: true
       managerId:
         type: reference
         label: Manager

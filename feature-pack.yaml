@@ -39,6 +39,11 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-direct-reports"
       description: "Get direct reports and org tree for an employee"
 
+    - path: /api/hrm/employees/[id]/org-scope
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-hrm/server/api/employees-org-scope"
+      description: "Get or update the org scope for an employee (org assignments)."
+
     - path: /api/hrm/employees/org-tree
       methods: [GET]
       handler: "@hit/feature-pack-hrm/server/api/employees-org-tree"

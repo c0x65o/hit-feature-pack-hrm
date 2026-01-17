@@ -24,6 +24,12 @@ api:
       handler: employees-direct-reports
       description: "Get direct reports for an employee"
 
+    # Org scope assignment for an employee
+    - path: /api/hrm/employees/[id]/org-scope
+      methods: [GET, PUT]
+      handler: employees-org-scope
+      description: "Get or update the org assignment for an employee"
+
     # Org tree for all employees
     - path: /api/hrm/employees/org-tree
       methods: [GET]
