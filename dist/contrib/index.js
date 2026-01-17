@@ -7,6 +7,7 @@
 'use client';
 import { jsx as _jsx } from "react/jsx-runtime";
 import { OrgChart } from '../ui/components/OrgChart';
+import { getEntityActionHandler } from '../ui/entityActions';
 function resolveEmployeeId(args) {
     const spec = args?.spec || {};
     const record = args?.record || {};
@@ -24,6 +25,14 @@ export const contrib = {
             if (!employeeId)
                 return null;
             return _jsx(OrgChart, { employeeId: employeeId, onNavigate: args?.navigate });
+        },
+    },
+    actionHandlers: {
+        'hrm.employees.sync': async ({ entityKey, record, uiSpec, navigate }) => {
+            const handler = getEntityActionHandler('hrm.employees.sync');
+            if (!handler)
+                throw new Error('Missing HRM handler: hrm.employees.sync');
+            await handler({ entityKey, record, uiSpec, navigate });
         },
     },
 };

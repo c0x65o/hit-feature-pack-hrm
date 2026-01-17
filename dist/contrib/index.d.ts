@@ -10,6 +10,13 @@ export type PackDetailExtraRendererArgs = {
 };
 export type PackContrib = {
     detailExtras?: Record<string, (args: PackDetailExtraRendererArgs) => React.ReactNode>;
+    actionHandlers?: Record<string, (args: PackActionHandlerContext) => void | Promise<void>>;
+};
+export type PackActionHandlerContext = {
+    entityKey: string;
+    record?: any;
+    uiSpec?: any;
+    navigate?: (path: string) => void;
 };
 export declare const contrib: PackContrib;
 export default contrib;

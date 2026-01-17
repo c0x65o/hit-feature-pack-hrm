@@ -6,6 +6,9 @@ export type EntityActionResult = {
 };
 export type EntityActionHandlerArgs = {
     entityKey: string;
+    record?: any;
+    uiSpec?: any;
+    navigate?: (path: string) => void;
     refetch?: () => Promise<any> | void;
 };
 export type EntityActionHandler = (args: EntityActionHandlerArgs) => void | EntityActionResult | Promise<void | EntityActionResult>;

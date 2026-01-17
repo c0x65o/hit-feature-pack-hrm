@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { OrgChart } from '../ui/components/OrgChart';
+import { getEntityActionHandler } from '../ui/entityActions';
 
 export type PackDetailExtraRendererArgs = {
   entityKey: string;
@@ -21,6 +22,14 @@ export type PackDetailExtraRendererArgs = {
 
 export type PackContrib = {
   detailExtras?: Record<string, (args: PackDetailExtraRendererArgs) => React.ReactNode>;
+  actionHandlers?: Record<string, (args: PackActionHandlerContext) => void | Promise<void>>;
+};
+
+export type PackActionHandlerContext = {
+  entityKey: string;
+  record?: any;
+  uiSpec?: any;
+  navigate?: (path: string) => void;
 };
 
 function resolveEmployeeId(args: PackDetailExtraRendererArgs): string {
@@ -41,6 +50,13 @@ export const contrib: PackContrib = {
       const employeeId = resolveEmployeeId(args);
       if (!employeeId) return null;
       return <OrgChart employeeId={employeeId} onNavigate={args?.navigate} />;
+    },
+  },
+  actionHandlers: {
+    'hrm.employees.sync': async ({ entityKey, record, uiSpec, navigate }) => {
+      const handler = getEntityActionHandler('hrm.employees.sync');
+      if (!handler) throw new Error('Missing HRM handler: hrm.employees.sync');
+      await handler({ entityKey, record, uiSpec, navigate });
     },
   },
 };
