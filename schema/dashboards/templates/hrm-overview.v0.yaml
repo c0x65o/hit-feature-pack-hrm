@@ -1,0 +1,56 @@
+templateKey: system.hrm_overview
+title: HRM Overview
+description: Starter HRM dashboard for the employee directory.
+version: 0
+definition:
+  time:
+    mode: picker
+    default: last_30_days
+  layout:
+    grid:
+      cols: 12
+      rowHeight: 36
+      gap: 14
+  widgets:
+    - key: kpi.hrm.employees_total
+      kind: kpi
+      title: Employees
+      grid:
+        x: 0
+        y: 0
+        w: 3
+        h: 2
+      time: all_time
+      presentation:
+        icon: Users
+        iconColor: "#3b82f6"
+        action:
+          label: View Directory
+          href: /hrm/employees
+        valueSource:
+          kind: api_count
+          endpoint: /api/hrm/employees
+          totalField: pagination.total
+    - key: table.hrm.recent_employees
+      kind: api_table
+      title: Recent Employees
+      grid:
+        x: 0
+        y: 2
+        w: 12
+        h: 6
+      presentation:
+        endpoint: /api/hrm/employees?page=1&pageSize=8&sortBy=createdAt&sortOrder=desc
+        itemsField: items
+        totalField: pagination.total
+        rowHrefTemplate: /hrm/employees/{{id}}
+        columns:
+          - label: First Name
+            field: firstName
+          - label: Last Name
+            field: lastName
+          - label: Position
+            field: positionName
+          - label: Updated
+            field: updatedAt
+            format: datetime
