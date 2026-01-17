@@ -83,7 +83,13 @@ entities:
     fields:
       id: { type: text, label: ID }
       name: { type: text, label: Position Name, required: true, placeholder: "e.g., Software Engineer" }
-      isActive: { type: boolean, label: Active, default: true }
+      isActive:
+        type: boolean
+        label: Active
+        default: true
+        options:
+          - { value: "true", label: Yes }
+          - { value: "false", label: No }
       createdAt: { type: datetime, label: Created }
       updatedAt: { type: datetime, label: Updated }
 
