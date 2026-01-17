@@ -4,6 +4,7 @@ import { getDb } from '@/lib/db';
 import { employees } from '@/lib/feature-pack-schemas';
 import { requireAuth } from '../auth';
 import { deriveEmployeeNamesFromEmail } from '../lib/employee-provisioning';
+import { checkHrmAction } from '../lib/require-action';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 function jsonError(message, status = 400) {
@@ -92,17 +93,40 @@ export async function PUT(request) {
     const state = optionalString(body?.state);
     const postalCode = optionalString(body?.postalCode);
     const country = optionalString(body?.country);
+    const db = getDb();
+    const existing = await db
+        .select({
+        id: employees.id,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+        preferredName: employees.preferredName,
+    })
+        .from(employees)
+        .where(eq(employees.userEmail, user.email))
+        .limit(1);
+    const existingEmployee = existing[0] ?? null;
+    const normalizeName = (val) => String(val || '').trim();
+    const normalizePreferred = (val) => {
+        const trimmed = String(val || '').trim();
+        return trimmed ? trimmed : null;
+    };
+    const currentFirst = normalizeName(existingEmployee?.firstName);
+    const currentLast = normalizeName(existingEmployee?.lastName);
+    const currentPreferred = normalizePreferred(existingEmployee?.preferredName);
+    const nameChanged = !existingEmployee ||
+        firstName !== currentFirst ||
+        lastName !== currentLast ||
+        preferredName !== currentPreferred;
+    if (nameChanged) {
+        const allowed = await checkHrmAction(request, 'hrm.employees.name.self');
+        if (!allowed.ok)
+            return jsonError('Forbidden', 403);
+    }
     if (!firstName)
         return jsonError('firstName is required', 400);
     if (!lastName)
         return jsonError('lastName is required', 400);
-    const db = getDb();
-    const existing = await db
-        .select({ id: employees.id })
-        .from(employees)
-        .where(eq(employees.userEmail, user.email))
-        .limit(1);
-    if (existing.length === 0) {
+    if (!existingEmployee) {
         const inserted = await db
             .insert(employees)
             .values({

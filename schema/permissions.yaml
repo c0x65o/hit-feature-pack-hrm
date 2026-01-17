@@ -33,6 +33,10 @@ permissions:
       label: "HRM: Update Employee Photos"
       description: "Allow updating other employees' profile photos (still constrained by HRM write scope)."
       default_enabled: false
+    - key: hrm.employees.name.self
+      label: "HRM: Update Own Name"
+      description: "Allow a user to update their own employee name fields."
+      default_enabled: false
     - key: hrm.org-chart.access
       label: "HRM: Org Chart"
       description: "Access the HRM org chart page."
