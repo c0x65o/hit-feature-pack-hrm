@@ -144,6 +144,8 @@ entities:
           pickerEndpoint: /api/hrm/employees/picker
           valueField: id
           labelField: displayName
+          labelFromRow: managerName
+      managerName: { type: text, label: Manager, virtual: true }
       isActive: { type: boolean, label: Active, default: true }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
@@ -155,8 +157,8 @@ entities:
       divisionName: { type: text, label: Division, virtual: true }
       departmentName: { type: text, label: Department, virtual: true }
       locationName: { type: text, label: Location, virtual: true }
-      createdAt: { type: datetime, label: Created, virtual: true }
-      updatedAt: { type: datetime, label: Updated, virtual: true }
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
 
     detail:
       summaryTitle: Details

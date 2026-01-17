@@ -111,3 +111,10 @@ nav:
             icon: Briefcase
             weight: 10
             showWhen: authenticated
+
+requires:
+  modules: [auth]
+
+dependencies:
+  feature_packs:
+    - name: auth-core
