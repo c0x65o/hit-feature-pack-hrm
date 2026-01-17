@@ -152,6 +152,10 @@ permissions:
       label: Create Employee
       description: "Create a new employee (employees are auto-provisioned, but this action controls access to creation flows)."
       default_enabled: false
+    - key: hrm.employees.sync
+      label: "HRM: Sync Employees"
+      description: "Manually sync HRM employees with auth users."
+      default_enabled: false
 
     # Employee picker permission (for reference fields in other entities)
     - key: hrm.employees.picker

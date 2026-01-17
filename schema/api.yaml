@@ -12,6 +12,12 @@ api:
       handler: employees-me
       description: "Get or upsert the current user's employee profile (name basics)."
 
+    # Manual employee sync
+    - path: /api/hrm/employees/sync
+      methods: [POST]
+      handler: employees-sync
+      description: "Manually sync HRM employees with auth users."
+
     # User directory
     - path: /api/hrm/directory/users
       methods: [GET]

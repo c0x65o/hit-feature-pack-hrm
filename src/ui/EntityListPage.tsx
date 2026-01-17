@@ -2,9 +2,11 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useServerDataTableState, useUi } from '@hit/ui-kit';
+import { useAlertDialog } from '@hit/ui-kit/hooks/useAlertDialog';
 import { useEntityDataTableColumns } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataSource } from './entityDataSources';
+import { getEntityActionHandler } from './entityActions';
 
 type ListSpec = {
   tableId?: string;
@@ -27,7 +29,8 @@ export function EntityListPage({
   onNavigate?: (path: string) => void;
   emptyMessage?: string;
 }) {
-  const { Page, Card, DataTable, Alert, Spinner } = useUi();
+  const { Page, Card, DataTable, Alert, Spinner, Button, AlertDialog } = useUi();
+  const alertDialog = useAlertDialog();
 
   const uiSpec = useEntityUiSpec(entityKey);
   const dataSource = useEntityDataSource(entityKey);
@@ -64,6 +67,7 @@ export function EntityListPage({
   const meta: any = (uiSpec as any)?.meta || {};
   const pageTitle = String(meta.titlePlural || entityKey);
   const pageDescription = String(meta.descriptionPlural || '');
+  const headerActionsSpec: any[] = Array.isArray(meta?.headerActions) ? meta.headerActions : [];
 
   const tableId = String(listSpec.tableId || entityKey);
   const uiStateVersion = String(listSpec.uiStateVersion || '').trim();
@@ -97,6 +101,7 @@ export function EntityListPage({
 
   const items = data?.items || [];
   const pagination = data?.pagination;
+  const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
   const columns = useEntityDataTableColumns({
     listSpec: listSpec as any,
@@ -126,8 +131,76 @@ export function EntityListPage({
   const detailHref = (id: string) =>
     String(routes.detail || `/${entityKey}/{id}`).replace('{id}', encodeURIComponent(id));
 
+  const coerceAlertVariant = (v: unknown): 'error' | 'success' | 'warning' | 'info' | undefined => {
+    const s = String(v || '').trim().toLowerCase();
+    if (s === 'error' || s === 'success' || s === 'warning' || s === 'info') return s;
+    return undefined;
+  };
+
+  const renderSpecHeaderActions = () => {
+    if (!Array.isArray(headerActionsSpec) || headerActionsSpec.length === 0) return null;
+    const nodes: React.ReactNode[] = [];
+    for (const a of headerActionsSpec) {
+      if (!a || typeof a !== 'object') continue;
+      const kind = String((a as any).kind || '').trim();
+      if (kind !== 'action') continue;
+      const actionKey = String((a as any).actionKey || '').trim();
+      if (!actionKey) continue;
+      const handler = getEntityActionHandler(actionKey);
+      if (!handler) continue;
+      const label = String((a as any).label || actionKey);
+      const confirm = (a as any).confirm && typeof (a as any).confirm === 'object' ? (a as any).confirm : null;
+      const isBusy = Boolean(actionLoading[actionKey]);
+      nodes.push(
+        <Button
+          key={actionKey}
+          variant="secondary"
+          size="sm"
+          loading={isBusy}
+          disabled={isBusy}
+          onClick={async () => {
+            if (confirm) {
+              const ok = await alertDialog.showConfirm(String(confirm.body || 'Are you sure?'), {
+                title: String(confirm.title || 'Confirm'),
+                variant: coerceAlertVariant((confirm as any).variant),
+              });
+              if (!ok) return;
+            }
+            setActionLoading((prev) => ({ ...(prev || {}), [actionKey]: true }));
+            try {
+              const result = await handler({ entityKey, refetch });
+              if (result && typeof result === 'object') {
+                if (result.message) {
+                  await alertDialog.showAlert(String(result.message), {
+                    title: String(result.title || 'Action completed'),
+                    variant: coerceAlertVariant((result as any).variant),
+                  });
+                }
+                if (result.refresh !== false) {
+                  await refetch();
+                }
+              } else {
+                await refetch();
+              }
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : 'Action failed';
+              await alertDialog.showAlert(String(msg), { title: 'Action Failed', variant: 'error' });
+            } finally {
+              setActionLoading((prev) => ({ ...(prev || {}), [actionKey]: false }));
+            }
+          }}
+        >
+          {label}
+        </Button>
+      );
+    }
+    return nodes.length > 0 ? <div className="flex items-center gap-2">{nodes}</div> : null;
+  };
+
+  const headerActions = renderSpecHeaderActions();
+
   return (
-    <Page title={pageTitle} description={pageDescription} onNavigate={navigate}>
+    <Page title={pageTitle} description={pageDescription} onNavigate={navigate} actions={headerActions || undefined}>
       <Card>
         <DataTable
           columns={columns}
@@ -148,6 +221,7 @@ export function EntityListPage({
           initialSorting={listSpec.initialSorting}
         />
       </Card>
+      <AlertDialog {...alertDialog.props} />
     </Page>
   );
 }

@@ -1,0 +1,10 @@
+version: 1
+
+# Pack contribution registry (schema-visible).
+#
+# Used by `hit schema validate` to ensure schema-declared “special” UI
+# (like meta.headerActions with actionKey) is actually provided by the feature pack.
+contrib:
+  actionHandlers:
+    - key: hrm.employees.sync
+      description: "Manually sync HRM employees with auth users."

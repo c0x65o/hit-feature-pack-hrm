@@ -2,11 +2,14 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
 import { useServerDataTableState, useUi } from '@hit/ui-kit';
+import { useAlertDialog } from '@hit/ui-kit/hooks/useAlertDialog';
 import { useEntityDataTableColumns } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataSource } from './entityDataSources';
+import { getEntityActionHandler } from './entityActions';
 export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
-    const { Page, Card, DataTable, Alert, Spinner } = useUi();
+    const { Page, Card, DataTable, Alert, Spinner, Button, AlertDialog } = useUi();
+    const alertDialog = useAlertDialog();
     const uiSpec = useEntityUiSpec(entityKey);
     const dataSource = useEntityDataSource(entityKey);
     const [isMobile, setIsMobile] = useState(false);
@@ -36,6 +39,7 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const meta = uiSpec?.meta || {};
     const pageTitle = String(meta.titlePlural || entityKey);
     const pageDescription = String(meta.descriptionPlural || '');
+    const headerActionsSpec = Array.isArray(meta?.headerActions) ? meta.headerActions : [];
     const tableId = String(listSpec.tableId || entityKey);
     const uiStateVersion = String(listSpec.uiStateVersion || '').trim();
     const uiStateKey = uiStateVersion ? `${tableId}@v${uiStateVersion}` : tableId;
@@ -60,6 +64,7 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     });
     const items = data?.items || [];
     const pagination = data?.pagination;
+    const [actionLoading, setActionLoading] = useState({});
     const columns = useEntityDataTableColumns({
         listSpec: listSpec,
         fieldsMap: uiSpec?.fields || null,
@@ -87,5 +92,69 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     };
     const routes = meta?.routes || {};
     const detailHref = (id) => String(routes.detail || `/${entityKey}/{id}`).replace('{id}', encodeURIComponent(id));
-    return (_jsx(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, children: _jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }) }));
+    const coerceAlertVariant = (v) => {
+        const s = String(v || '').trim().toLowerCase();
+        if (s === 'error' || s === 'success' || s === 'warning' || s === 'info')
+            return s;
+        return undefined;
+    };
+    const renderSpecHeaderActions = () => {
+        if (!Array.isArray(headerActionsSpec) || headerActionsSpec.length === 0)
+            return null;
+        const nodes = [];
+        for (const a of headerActionsSpec) {
+            if (!a || typeof a !== 'object')
+                continue;
+            const kind = String(a.kind || '').trim();
+            if (kind !== 'action')
+                continue;
+            const actionKey = String(a.actionKey || '').trim();
+            if (!actionKey)
+                continue;
+            const handler = getEntityActionHandler(actionKey);
+            if (!handler)
+                continue;
+            const label = String(a.label || actionKey);
+            const confirm = a.confirm && typeof a.confirm === 'object' ? a.confirm : null;
+            const isBusy = Boolean(actionLoading[actionKey]);
+            nodes.push(_jsx(Button, { variant: "secondary", size: "sm", loading: isBusy, disabled: isBusy, onClick: async () => {
+                    if (confirm) {
+                        const ok = await alertDialog.showConfirm(String(confirm.body || 'Are you sure?'), {
+                            title: String(confirm.title || 'Confirm'),
+                            variant: coerceAlertVariant(confirm.variant),
+                        });
+                        if (!ok)
+                            return;
+                    }
+                    setActionLoading((prev) => ({ ...(prev || {}), [actionKey]: true }));
+                    try {
+                        const result = await handler({ entityKey, refetch });
+                        if (result && typeof result === 'object') {
+                            if (result.message) {
+                                await alertDialog.showAlert(String(result.message), {
+                                    title: String(result.title || 'Action completed'),
+                                    variant: coerceAlertVariant(result.variant),
+                                });
+                            }
+                            if (result.refresh !== false) {
+                                await refetch();
+                            }
+                        }
+                        else {
+                            await refetch();
+                        }
+                    }
+                    catch (e) {
+                        const msg = e instanceof Error ? e.message : 'Action failed';
+                        await alertDialog.showAlert(String(msg), { title: 'Action Failed', variant: 'error' });
+                    }
+                    finally {
+                        setActionLoading((prev) => ({ ...(prev || {}), [actionKey]: false }));
+                    }
+                }, children: label }, actionKey));
+        }
+        return nodes.length > 0 ? _jsx("div", { className: "flex items-center gap-2", children: nodes }) : null;
+    };
+    const headerActions = renderSpecHeaderActions();
+    return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [_jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
 }

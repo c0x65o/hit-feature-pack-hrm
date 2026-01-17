@@ -29,6 +29,11 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-me"
       description: "Get or upsert the current user's employee profile (name basics)."
 
+    - path: /api/hrm/employees/sync
+      methods: [POST]
+      handler: "@hit/feature-pack-hrm/server/api/employees-sync"
+      description: "Manually sync HRM employees with auth users."
+
     - path: /api/hrm/directory/users
       methods: [GET]
       handler: "@hit/feature-pack-hrm/server/api/directory-users"
