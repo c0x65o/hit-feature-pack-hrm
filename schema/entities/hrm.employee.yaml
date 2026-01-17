@@ -23,6 +23,7 @@ entities:
         - kind: action
           actionKey: hrm.employees.sync
           label: Sync Employees
+          icon: refresh
           confirm:
             title: Sync employees?
             body: This will sync HRM employees with auth users and update active status.
