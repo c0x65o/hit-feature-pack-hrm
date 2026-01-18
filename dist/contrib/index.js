@@ -6,25 +6,25 @@
  */
 'use client';
 import { jsx as _jsx } from "react/jsx-runtime";
-import { OrgChart } from '../ui/components/OrgChart';
+import { OrgChart } from '@hit/ui-kit';
 import { getEntityActionHandler } from '../ui/entityActions';
-function resolveEmployeeId(args) {
-    const spec = args?.spec || {};
-    const record = args?.record || {};
-    const employeeIdFrom = spec?.employeeIdFrom || {};
-    const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
-    const value = employeeIdFrom?.kind === 'parentField'
-        ? record?.[fromField]
-        : record?.[fromField] ?? record?.id;
-    return value == null ? '' : String(value).trim();
-}
 export const contrib = {
+    listWidgets: {
+        orgChart: (args) => {
+            const listSpec = (args?.listSpec || {});
+            const options = listSpec?.widgetOptions && typeof listSpec.widgetOptions === 'object' ? listSpec.widgetOptions : {};
+            const spec = {
+                endpoint: String(options.endpoint || listSpec.endpoint || '').trim(),
+                navigateTo: String(options.navigateTo || listSpec.navigateTo || '').trim(),
+                variant: options.variant || listSpec.variant || 'full',
+                height: options.height || listSpec.height || 640,
+            };
+            return _jsx(OrgChart, { spec: spec, onNavigate: args?.navigate });
+        },
+    },
     detailExtras: {
         orgChart: (args) => {
-            const employeeId = resolveEmployeeId(args);
-            if (!employeeId)
-                return null;
-            return _jsx(OrgChart, { employeeId: employeeId, onNavigate: args?.navigate });
+            return _jsx(OrgChart, { spec: args?.spec, record: args?.record, onNavigate: args?.navigate });
         },
     },
     actionHandlers: {

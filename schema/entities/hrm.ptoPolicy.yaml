@@ -1,0 +1,139 @@
+version: 1
+
+entities:
+  hrm.ptoPolicy:
+    meta:
+      titleSingular: PTO Policy
+      titlePlural: PTO Policies
+      descriptionPlural: PTO policy definitions
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/policies
+        new: /hrm/pto/policies/new
+        detail: /hrm/pto/policies/{id}
+        edit: /hrm/pto/policies/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Policies, href: /hrm/pto/policies }
+      actions:
+        createLabel: New PTO Policy
+        editLabel: Edit PTO Policy
+        saveCreateLabel: Create Policy
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete PTO Policy
+        deleteConfirmBody: Are you sure you want to delete "{name}"? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicies, verb: read, require_action: hrm.setup.pto-policies.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicies, verb: read, require_action: hrm.setup.pto-policies.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicies, verb: write, require_action: hrm.setup.pto-policies.manage, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicies, verb: write, require_action: hrm.setup.pto-policies.manage, show_pages: true }
+
+    api:
+      resource: pto-policies
+
+    storage:
+      drizzleTable: ptoPolicies
+
+    list:
+      tableId: hrm.ptoPolicies
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: name, sortOrder: asc }
+      sortWhitelist: [name, balanceMode, accrualMethod, unit, isActive, effectiveDate, createdAt]
+      initialColumnVisibility:
+        name: true
+        balanceMode: true
+        accrualMethod: true
+        unit: true
+        isActive: true
+        effectiveDate: false
+        createdAt: false
+      columns:
+        - name
+        - balanceMode
+        - accrualMethod
+        - unit
+        - isActive
+        - effectiveDate
+        - createdAt
+
+    form:
+      sections:
+        - id: basics
+          title: Policy Basics
+          layout: { columns: 2 }
+          fields: [name, code, balanceMode, accrualMethod, unit, effectiveDate, isActive]
+        - id: rules
+          title: Rules (JSON)
+          layout: { columns: 1 }
+          fields: [rules]
+        - id: description
+          title: Description
+          layout: { columns: 1 }
+          fields: [description]
+
+    fields:
+      id: { type: text, label: ID }
+      name: { type: text, label: Name, required: true }
+      code: { type: text, label: Code }
+      description: { type: textarea, label: Description }
+      balanceMode:
+        type: select
+        label: Balance Mode
+        options:
+          - { value: tracked, label: Tracked }
+          - { value: unlimited, label: Unlimited }
+      accrualMethod:
+        type: select
+        label: Accrual Method
+        options:
+          - { value: accrual, label: Accrual }
+          - { value: fixed, label: Fixed }
+      unit:
+        type: select
+        label: Unit
+        options:
+          - { value: days, label: Days }
+          - { value: hours, label: Hours }
+      rules:
+        type: textarea
+        label: Rules (JSON)
+        placeholder: "{ \"accrual\": { \"frequency\": \"monthly\", \"amount\": 1.25 } }"
+      effectiveDate: { type: date, label: Effective Date }
+      isActive:
+        type: boolean
+        label: Active
+        default: true
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: PTO Policy Details
+      summaryFields:
+        - name
+        - code
+        - balanceMode
+        - accrualMethod
+        - unit
+        - effectiveDate
+        - isActive
+        - rules
+        - description
+        - createdAt
+        - updatedAt

@@ -1,0 +1,95 @@
+version: 1
+
+workflows:
+  hrm.pto.requestApproval:
+    meta:
+      title: PTO request approval
+      description: Manager approval, then HR approval.
+      status: draft
+      tags: [pto, approvals]
+    trigger:
+      kind: entityAction
+      entityKey: hrm.ptoRequest
+      action: submit
+    graph:
+      layout: { direction: LR }
+      nodes:
+        - id: start
+          type: start
+          data: { label: Start }
+        - id: managerApproval
+          type: approval
+          data:
+            label: Manager approval
+            assignment:
+              anyOf:
+                - kind: manager
+                  scope: requester
+                  levels: { min: 1, max: 1 }
+                - kind: orgManager
+                  dimension: location
+                  scope: requester
+              autoApproveIf:
+                - kind: requesterIsApprover
+        - id: hrApproval
+          type: approval
+          data:
+            label: HR approval
+            assignment:
+              anyOf:
+                - kind: role
+                  roles: [hr_admin]
+        - id: approved
+          type: end
+          data: { label: Approved }
+        - id: rejected
+          type: end
+          data: { label: Rejected }
+      edges:
+        - { id: e1, source: start, target: managerApproval }
+        - { id: e2, source: managerApproval, target: hrApproval, when: approved }
+        - { id: e3, source: managerApproval, target: rejected, when: denied }
+        - { id: e4, source: hrApproval, target: approved, when: approved }
+        - { id: e5, source: hrApproval, target: rejected, when: denied }
+
+  hrm.employee.deleteApproval:
+    meta:
+      title: Employee delete approval
+      description: Anyone can request delete. Approver is location manager or level >= 3.
+      status: draft
+      tags: [hrm, approvals, delete]
+    trigger:
+      kind: entityAction
+      entityKey: hrm.employee
+      action: delete
+    graph:
+      layout: { direction: LR }
+      nodes:
+        - id: start
+          type: start
+          data: { label: Start }
+        - id: approval
+          type: approval
+          data:
+            label: Delete approval
+            assignment:
+              anyOf:
+                - kind: orgManager
+                  dimension: location
+                  scope: requester
+                - kind: employeeLevel
+                  scope: requesterManagerChain
+                  levelMin: 3
+                  levelMax: 99
+              autoApproveIf:
+                - kind: requesterIsApprover
+        - id: approved
+          type: end
+          data: { label: Approved }
+        - id: rejected
+          type: end
+          data: { label: Rejected }
+      edges:
+        - { id: e1, source: start, target: approval }
+        - { id: e2, source: approval, target: approved, when: approved }
+        - { id: e3, source: approval, target: rejected, when: denied }

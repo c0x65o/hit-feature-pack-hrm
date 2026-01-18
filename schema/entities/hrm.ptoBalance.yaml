@@ -1,0 +1,117 @@
+version: 1
+
+entities:
+  hrm.ptoBalance:
+    meta:
+      titleSingular: PTO Balance
+      titlePlural: PTO Balances
+      descriptionPlural: Current PTO balances
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/balances
+        detail: /hrm/pto/balances/{id}
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Balances, href: /hrm/pto/balances }
+      actions:
+        editLabel: View Balance
+        cancelLabel: Close
+        allowCreate: false
+        allowDelete: false
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoBalances, verb: read, require_action: hrm.pto.balances.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoBalances, verb: read, require_action: hrm.pto.balances.access, show_pages: true }
+
+    api:
+      resource: pto-balances
+
+    storage:
+      drizzleTable: ptoBalances
+
+    list:
+      tableId: hrm.ptoBalances
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: updatedAt, sortOrder: desc }
+      sortWhitelist: [employeeId, leaveTypeName, balance, asOfDate, updatedAt]
+      initialColumnVisibility:
+        employeeId: true
+        leaveTypeName: true
+        balance: true
+        unit: true
+        asOfDate: true
+        updatedAt: false
+      columns:
+        - key: employeeId
+          label: Employee
+          reference:
+            entityType: hrm.employee
+            labelFromRow: employeeName
+        - leaveTypeName
+        - balance
+        - unit
+        - asOfDate
+        - updatedAt
+
+    form:
+      sections:
+        - id: balance
+          title: Balance
+          layout: { columns: 2 }
+          fields: [employeeId, leaveTypeId, policyId, balance, unit, asOfDate]
+
+    fields:
+      id: { type: text, label: ID }
+      employeeId:
+        type: reference
+        label: Employee
+        optionSource: hrm.employees
+        labelFromRow: employeeName
+        reference:
+          entityType: hrm.employee
+          pickerEndpoint: /api/hrm/employees/picker
+          valueField: id
+          labelField: displayName
+      employeeName: { type: text, label: Employee, virtual: true }
+      leaveTypeId:
+        type: select
+        label: Leave Type
+        optionSource: hrm.leaveTypes
+        labelFromRow: leaveTypeName
+      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      policyId:
+        type: select
+        label: PTO Policy
+        optionSource: hrm.ptoPolicies
+        labelFromRow: policyName
+      policyName: { type: text, label: Policy, virtual: true }
+      balance: { type: number, label: Balance }
+      unit:
+        type: select
+        label: Unit
+        options:
+          - { value: days, label: Days }
+          - { value: hours, label: Hours }
+      asOfDate: { type: date, label: As Of Date }
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: PTO Balance Details
+      summaryFields:
+        - employeeId
+        - leaveTypeName
+        - policyName
+        - balance
+        - unit
+        - asOfDate
+        - createdAt
+        - updatedAt

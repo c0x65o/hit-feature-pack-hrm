@@ -59,16 +59,19 @@ entities:
         sortOrder: asc
       sortWhitelist:
         - name
+        - level
         - isActive
         - createdAt
         - updatedAt
       initialColumnVisibility:
         name: true
+        level: false
         isActive: true
         createdAt: false
         updatedAt: false
       columns:
         - name
+        - level
         - isActive
         - createdAt
         - updatedAt
@@ -78,11 +81,12 @@ entities:
         - id: basics
           title: Position Details
           layout: { columns: 1 }
-          fields: [name, isActive]
+          fields: [name, level, isActive]
 
     fields:
       id: { type: text, label: ID }
       name: { type: text, label: Position Name, required: true, placeholder: "e.g., Software Engineer" }
+      level: { type: number, label: Level }
       isActive:
         type: boolean
         label: Active
@@ -97,6 +101,7 @@ entities:
       summaryTitle: Position Details
       summaryFields:
         - name
+        - level
         - isActive
         - createdAt
         - updatedAt

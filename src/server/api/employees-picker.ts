@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asc, eq, like, or, sql } from 'drizzle-orm';
+import { asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
 import { employees } from '@/lib/feature-pack-schemas';
@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
   const search = (sp.get('search') || '').trim();
   const id = (sp.get('id') || '').trim();
   const userEmail = (sp.get('userEmail') || '').trim();
+  const idsRaw = (sp.get('ids') || '').trim();
+  const ids = idsRaw ? idsRaw.split(',').map((x) => x.trim()).filter(Boolean) : [];
   const pageSizeRaw = parseInt(sp.get('pageSize') || sp.get('limit') || '25', 10) || 25;
   const pageSize = Math.min(Math.max(1, pageSizeRaw), 100);
 
@@ -50,7 +52,9 @@ export async function GET(request: NextRequest) {
     conditions.push(eq(employees.isActive, true));
 
     // If id is provided, fetch a single employee by id (for resolveValue)
-    if (id) {
+    if (ids.length > 0) {
+      conditions.push(inArray(employees.id, ids as any));
+    } else if (id) {
       conditions.push(eq(employees.id, id));
     } else if (userEmail) {
       // If userEmail is provided, fetch by email (for resolveValue when valueField=userEmail)

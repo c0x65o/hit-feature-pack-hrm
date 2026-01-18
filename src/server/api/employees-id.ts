@@ -155,7 +155,12 @@ export async function GET(request: NextRequest) {
     // ignore enrichment errors
   }
 
-  return NextResponse.json({ ...employee, positionName, divisionName, departmentName, locationName });
+  const preferred = String((employee as any).preferredName || '').trim();
+  const first = String((employee as any).firstName || '').trim();
+  const last = String((employee as any).lastName || '').trim();
+  const displayName = preferred || [first, last].filter(Boolean).join(' ').trim() || String((employee as any).userEmail || '');
+
+  return NextResponse.json({ ...employee, displayName, positionName, divisionName, departmentName, locationName });
 }
 
 /**
@@ -188,6 +193,8 @@ export async function PUT(request: NextRequest) {
         preferredName?: unknown;
         positionId?: unknown;
         managerId?: unknown;
+        hireDate?: unknown;
+        jobLevel?: unknown;
         phone?: unknown;
         address1?: unknown;
         address2?: unknown;
@@ -225,6 +232,15 @@ export async function PUT(request: NextRequest) {
   const positionId = positionIdRaw === undefined ? undefined : positionIdRaw;
   const managerIdRaw = optionalString(body?.managerId);
   const managerId = managerIdRaw === undefined ? undefined : managerIdRaw;
+  const hireDateRaw = optionalString(body?.hireDate);
+  const hireDate = hireDateRaw === undefined ? undefined : hireDateRaw;
+  const jobLevelRaw = body?.jobLevel;
+  const jobLevel =
+    jobLevelRaw === undefined
+      ? undefined
+      : jobLevelRaw === null || String(jobLevelRaw).trim() === ''
+        ? null
+        : Number(jobLevelRaw);
 
   const update: Record<string, any> = {};
   if (firstName !== undefined) {
@@ -279,6 +295,18 @@ export async function PUT(request: NextRequest) {
         update.managerId = mid;
       }
     }
+  }
+  if (hireDate !== undefined) {
+    if (hireDate && !/^\d{4}-\d{2}-\d{2}$/.test(hireDate)) {
+      return jsonError('hireDate must be in YYYY-MM-DD format', 400);
+    }
+    update.hireDate = hireDate;
+  }
+  if (jobLevel !== undefined) {
+    if (jobLevel !== null && !Number.isFinite(jobLevel)) {
+      return jsonError('jobLevel must be a number', 400);
+    }
+    update.jobLevel = jobLevel;
   }
 
   if (Object.keys(update).length === 0) return jsonError('No fields to update', 400);

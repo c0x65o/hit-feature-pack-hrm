@@ -40,6 +40,7 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const pageTitle = String(meta.titlePlural || entityKey);
     const pageDescription = String(meta.descriptionPlural || '');
     const headerActionsSpec = Array.isArray(meta?.headerActions) ? meta.headerActions : [];
+    const actionsMeta = meta?.actions || {};
     const tableId = String(listSpec.tableId || entityKey);
     const uiStateVersion = String(listSpec.uiStateVersion || '').trim();
     const uiStateKey = uiStateVersion ? `${tableId}@v${uiStateVersion}` : tableId;
@@ -155,6 +156,11 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
         }
         return nodes.length > 0 ? _jsx("div", { className: "flex items-center gap-2", children: nodes }) : null;
     };
-    const headerActions = renderSpecHeaderActions();
+    const allowCreate = actionsMeta?.allowCreate !== false;
+    const createHref = routes?.new ? String(routes.new) : '';
+    const createLabel = String(actionsMeta.createLabel || `New ${meta.titleSingular || entityKey}`);
+    const createAction = createHref && allowCreate ? (_jsx(Button, { variant: "primary", size: "sm", onClick: () => navigate(createHref), children: createLabel })) : null;
+    const specActions = renderSpecHeaderActions();
+    const headerActions = createAction || specActions ? (_jsxs("div", { className: "flex items-center gap-2", children: [createAction, specActions] })) : null;
     return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [_jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
 }

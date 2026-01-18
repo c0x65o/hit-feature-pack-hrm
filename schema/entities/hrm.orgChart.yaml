@@ -1,0 +1,37 @@
+version: 1
+
+entities:
+  hrm.orgChart:
+    meta:
+      titleSingular: Organization Chart
+      titlePlural: Organization Chart
+      descriptionPlural: Organization-wide org chart
+      routes:
+        root: /hrm
+        list: /hrm/org-chart
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: Organization Chart, href: /hrm/org-chart }
+      actions:
+        allowCreate: false
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: employees, verb: read, require_action: hrm.org-chart.access, show_pages: true }
+
+    list:
+      widget: orgChart
+      widgetMode: orgChart
+      widgetOptions:
+        endpoint: /api/hrm/employees/org-tree
+        navigateTo: /hrm/employees/{id}
+        navigateEntityKey: hrm.employee
+        variant: full
+        height: 640
+
+    fields:
+      id: { type: text, label: ID, virtual: true }
+      label: { type: text, label: Label, virtual: true }
+      title: { type: text, label: Title, virtual: true }

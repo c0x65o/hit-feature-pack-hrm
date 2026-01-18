@@ -1,0 +1,161 @@
+version: 1
+
+entities:
+  hrm.ptoLedgerEntry:
+    meta:
+      titleSingular: PTO Ledger Entry
+      titlePlural: PTO Ledger
+      descriptionPlural: PTO balance ledger entries
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/ledger
+        detail: /hrm/pto/ledger/{id}
+        new: /hrm/pto/ledger/new
+        edit: /hrm/pto/ledger/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Ledger, href: /hrm/pto/ledger }
+      actions:
+        createLabel: New Ledger Entry
+        editLabel: Edit Entry
+        saveCreateLabel: Create Entry
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete Ledger Entry
+        deleteConfirmBody: Are you sure you want to delete this ledger entry? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoLedgerEntries, verb: read, require_action: hrm.pto.ledger.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoLedgerEntries, verb: read, require_action: hrm.pto.ledger.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoLedgerEntries, verb: write, require_action: hrm.pto.ledger.adjust, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoLedgerEntries, verb: write, require_action: hrm.pto.ledger.adjust, show_pages: true }
+
+    api:
+      resource: pto-ledger-entries
+
+    storage:
+      drizzleTable: ptoLedgerEntries
+
+    list:
+      tableId: hrm.ptoLedgerEntries
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: effectiveDate, sortOrder: desc }
+      sortWhitelist: [employeeId, leaveTypeName, entryType, amount, effectiveDate, createdAt]
+      initialColumnVisibility:
+        employeeId: true
+        leaveTypeName: true
+        entryType: true
+        amount: true
+        unit: true
+        effectiveDate: true
+        sourceType: false
+        createdAt: false
+      columns:
+        - key: employeeId
+          label: Employee
+          reference:
+            entityType: hrm.employee
+            labelFromRow: employeeName
+        - leaveTypeName
+        - entryType
+        - amount
+        - unit
+        - effectiveDate
+        - sourceType
+        - createdAt
+
+    form:
+      sections:
+        - id: basics
+          title: Ledger Entry
+          layout: { columns: 2 }
+          fields: [employeeId, leaveTypeId, policyId, entryType, amount, unit, effectiveDate]
+        - id: source
+          title: Source
+          layout: { columns: 2 }
+          fields: [sourceType, sourceId, createdByUserKey]
+        - id: notes
+          title: Notes
+          layout: { columns: 1 }
+          fields: [notes]
+
+    fields:
+      id: { type: text, label: ID }
+      employeeId:
+        type: reference
+        label: Employee
+        optionSource: hrm.employees
+        labelFromRow: employeeName
+        reference:
+          entityType: hrm.employee
+          pickerEndpoint: /api/hrm/employees/picker
+          valueField: id
+          labelField: displayName
+        required: true
+      employeeName: { type: text, label: Employee, virtual: true }
+      leaveTypeId:
+        type: select
+        label: Leave Type
+        optionSource: hrm.leaveTypes
+        labelFromRow: leaveTypeName
+        required: true
+      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      policyId:
+        type: select
+        label: PTO Policy
+        optionSource: hrm.ptoPolicies
+        labelFromRow: policyName
+      policyName: { type: text, label: Policy, virtual: true }
+      entryType:
+        type: select
+        label: Entry Type
+        options:
+          - { value: accrual, label: Accrual }
+          - { value: deduction, label: Deduction }
+          - { value: rollover, label: Rollover }
+          - { value: expiration, label: Expiration }
+          - { value: adjustment, label: Adjustment }
+      amount: { type: number, label: Amount, required: true }
+      unit:
+        type: select
+        label: Unit
+        options:
+          - { value: days, label: Days }
+          - { value: hours, label: Hours }
+      effectiveDate: { type: date, label: Effective Date, required: true }
+      sourceType: { type: text, label: Source Type }
+      sourceId: { type: text, label: Source ID }
+      notes: { type: textarea, label: Notes }
+      createdByUserKey: { type: text, label: Created By }
+      createdAt: { type: datetime, label: Created }
+
+    detail:
+      summaryTitle: PTO Ledger Entry Details
+      summaryFields:
+        - employeeId
+        - leaveTypeName
+        - policyName
+        - entryType
+        - amount
+        - unit
+        - effectiveDate
+        - sourceType
+        - sourceId
+        - notes
+        - createdByUserKey
+        - createdAt

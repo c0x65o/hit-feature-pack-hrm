@@ -1,0 +1,170 @@
+version: 1
+
+entities:
+  hrm.ptoPolicyAssignment:
+    meta:
+      titleSingular: PTO Assignment
+      titlePlural: PTO Assignments
+      descriptionPlural: PTO policy assignments to employees or org groups
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/assignments
+        new: /hrm/pto/assignments/new
+        detail: /hrm/pto/assignments/{id}
+        edit: /hrm/pto/assignments/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Assignments, href: /hrm/pto/assignments }
+      actions:
+        createLabel: New Assignment
+        editLabel: Edit Assignment
+        saveCreateLabel: Create Assignment
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete PTO Assignment
+        deleteConfirmBody: Are you sure you want to delete this assignment? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicyAssignments, verb: read, require_action: hrm.setup.pto-assignments.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicyAssignments, verb: read, require_action: hrm.setup.pto-assignments.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicyAssignments, verb: write, require_action: hrm.setup.pto-assignments.manage, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: ptoPolicyAssignments, verb: write, require_action: hrm.setup.pto-assignments.manage, show_pages: true }
+
+    api:
+      resource: pto-policy-assignments
+
+    storage:
+      drizzleTable: ptoPolicyAssignments
+
+    list:
+      tableId: hrm.ptoPolicyAssignments
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: createdAt, sortOrder: desc }
+      sortWhitelist: [policyName, employeeId, effectiveDate, isActive, createdAt]
+      initialColumnVisibility:
+        policyName: true
+        employeeId: true
+        locationName: false
+        departmentName: false
+        divisionName: false
+        groupId: false
+        effectiveDate: true
+        endDate: false
+        isActive: true
+        createdAt: false
+      columns:
+        - policyName
+        - key: employeeId
+          label: Employee
+          reference:
+            entityType: hrm.employee
+            labelFromRow: employeeName
+        - locationName
+        - departmentName
+        - divisionName
+        - groupId
+        - effectiveDate
+        - endDate
+        - isActive
+        - createdAt
+
+    form:
+      sections:
+        - id: policy
+          title: Policy
+          layout: { columns: 2 }
+          fields: [policyId, priority, isActive]
+        - id: scope
+          title: Scope
+          layout: { columns: 2 }
+          fields: [employeeId, locationId, departmentId, divisionId, groupId]
+        - id: timing
+          title: Timing
+          layout: { columns: 2 }
+          fields: [effectiveDate, endDate]
+        - id: notes
+          title: Notes
+          layout: { columns: 1 }
+          fields: [notes]
+
+    fields:
+      id: { type: text, label: ID }
+      policyId:
+        type: select
+        label: PTO Policy
+        optionSource: hrm.ptoPolicies
+        labelFromRow: policyName
+        required: true
+      policyName: { type: text, label: Policy, virtual: true }
+      employeeId:
+        type: reference
+        label: Employee
+        optionSource: hrm.employees
+        labelFromRow: employeeName
+        reference:
+          entityType: hrm.employee
+          pickerEndpoint: /api/hrm/employees/picker
+          valueField: id
+          labelField: displayName
+      employeeName: { type: text, label: Employee, virtual: true }
+      locationId:
+        type: select
+        label: Location
+        optionSource: org.locations
+        labelFromRow: locationName
+      locationName: { type: text, label: Location, virtual: true }
+      departmentId:
+        type: select
+        label: Department
+        optionSource: org.departments
+        labelFromRow: departmentName
+      departmentName: { type: text, label: Department, virtual: true }
+      divisionId:
+        type: select
+        label: Division
+        optionSource: org.divisions
+        labelFromRow: divisionName
+      divisionName: { type: text, label: Division, virtual: true }
+      groupId: { type: text, label: Group ID }
+      effectiveDate: { type: date, label: Effective Date }
+      endDate: { type: date, label: End Date }
+      priority: { type: number, label: Priority, default: 0 }
+      isActive:
+        type: boolean
+        label: Active
+        default: true
+      notes: { type: textarea, label: Notes }
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: PTO Assignment Details
+      summaryFields:
+        - policyName
+        - employeeId
+        - locationName
+        - departmentName
+        - divisionName
+        - groupId
+        - effectiveDate
+        - endDate
+        - priority
+        - isActive
+        - notes
+        - createdAt
+        - updatedAt

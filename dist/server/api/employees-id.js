@@ -126,7 +126,11 @@ export async function GET(request) {
     catch {
         // ignore enrichment errors
     }
-    return NextResponse.json({ ...employee, positionName, divisionName, departmentName, locationName });
+    const preferred = String(employee.preferredName || '').trim();
+    const first = String(employee.firstName || '').trim();
+    const last = String(employee.lastName || '').trim();
+    const displayName = preferred || [first, last].filter(Boolean).join(' ').trim() || String(employee.userEmail || '');
+    return NextResponse.json({ ...employee, displayName, positionName, divisionName, departmentName, locationName });
 }
 /**
  * PUT /api/hrm/employees/[id]
@@ -176,6 +180,14 @@ export async function PUT(request) {
     const positionId = positionIdRaw === undefined ? undefined : positionIdRaw;
     const managerIdRaw = optionalString(body?.managerId);
     const managerId = managerIdRaw === undefined ? undefined : managerIdRaw;
+    const hireDateRaw = optionalString(body?.hireDate);
+    const hireDate = hireDateRaw === undefined ? undefined : hireDateRaw;
+    const jobLevelRaw = body?.jobLevel;
+    const jobLevel = jobLevelRaw === undefined
+        ? undefined
+        : jobLevelRaw === null || String(jobLevelRaw).trim() === ''
+            ? null
+            : Number(jobLevelRaw);
     const update = {};
     if (firstName !== undefined) {
         if (!firstName)
@@ -242,6 +254,18 @@ export async function PUT(request) {
                 update.managerId = mid;
             }
         }
+    }
+    if (hireDate !== undefined) {
+        if (hireDate && !/^\d{4}-\d{2}-\d{2}$/.test(hireDate)) {
+            return jsonError('hireDate must be in YYYY-MM-DD format', 400);
+        }
+        update.hireDate = hireDate;
+    }
+    if (jobLevel !== undefined) {
+        if (jobLevel !== null && !Number.isFinite(jobLevel)) {
+            return jsonError('jobLevel must be a number', 400);
+        }
+        update.jobLevel = jobLevel;
     }
     if (Object.keys(update).length === 0)
         return jsonError('No fields to update', 400);

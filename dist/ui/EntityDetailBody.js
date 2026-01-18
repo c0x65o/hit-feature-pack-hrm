@@ -1,11 +1,9 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useMemo } from 'react';
-import { useUi } from '@hit/ui-kit';
-import { useEntityResolver } from '@hit/ui-kit';
+import { OrgChart, useUi, useEntityResolver } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
 import { EmbeddedEntityTable } from './EmbeddedEntityTable';
-import { OrgChart } from './components/OrgChart';
 import { getHitPlatform } from './platformVisibility';
 function asRecord(v) {
     return v && typeof v === 'object' && !Array.isArray(v) ? v : null;
@@ -109,12 +107,7 @@ export function EntityDetailBody({ entityKey, uiSpec, record, navigate, }) {
             return _jsx(EmbeddedEntityTable, { spec: spec, parent: record, navigate: navigate });
         }
         if (kind === 'orgChart') {
-            const employeeIdFrom = asRecord(spec?.employeeIdFrom) || {};
-            const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
-            const employeeId = String(record?.[fromField] ?? record?.id ?? '').trim();
-            if (!employeeId)
-                return null;
-            return _jsx(OrgChart, { employeeId: employeeId, onNavigate: navigate });
+            return _jsx(OrgChart, { spec: spec, record: record, onNavigate: navigate });
         }
         return (_jsxs(Alert, { variant: "warning", title: "Unsupported detail extra", children: ["No renderer is registered for `", kind, "` yet."] }));
     };

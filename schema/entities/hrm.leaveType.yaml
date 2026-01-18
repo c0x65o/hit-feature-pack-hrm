@@ -1,0 +1,118 @@
+version: 1
+
+entities:
+  hrm.leaveType:
+    meta:
+      titleSingular: Leave Type
+      titlePlural: Leave Types
+      descriptionPlural: PTO and leave type catalog
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/leave-types
+        new: /hrm/pto/leave-types/new
+        detail: /hrm/pto/leave-types/{id}
+        edit: /hrm/pto/leave-types/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Leave Types, href: /hrm/pto/leave-types }
+      actions:
+        createLabel: New Leave Type
+        editLabel: Edit Leave Type
+        saveCreateLabel: Create Leave Type
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete Leave Type
+        deleteConfirmBody: Are you sure you want to delete "{name}"? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: leaveTypes, verb: read, require_action: hrm.setup.leave-types.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: leaveTypes, verb: read, require_action: hrm.setup.leave-types.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: leaveTypes, verb: write, require_action: hrm.setup.leave-types.manage, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: leaveTypes, verb: write, require_action: hrm.setup.leave-types.manage, show_pages: true }
+
+    api:
+      resource: leave-types
+
+    storage:
+      drizzleTable: leaveTypes
+
+    list:
+      tableId: hrm.leaveTypes
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort:
+        sortBy: name
+        sortOrder: asc
+      sortWhitelist: [name, code, isPaid, isActive, createdAt]
+      initialColumnVisibility:
+        name: true
+        code: true
+        isPaid: true
+        requiresAttachment: false
+        isActive: true
+        createdAt: false
+      columns:
+        - name
+        - code
+        - isPaid
+        - requiresAttachment
+        - isActive
+        - createdAt
+
+    form:
+      sections:
+        - id: basics
+          title: Leave Type
+          layout: { columns: 2 }
+          fields: [name, code, isPaid, color, requiresAttachment, isActive]
+        - id: description
+          title: Description
+          layout: { columns: 1 }
+          fields: [description]
+
+    fields:
+      id: { type: text, label: ID }
+      name: { type: text, label: Name, required: true }
+      code: { type: text, label: Code }
+      description: { type: textarea, label: Description }
+      isPaid:
+        type: boolean
+        label: Paid
+        default: true
+      color: { type: text, label: Color }
+      requiresAttachment:
+        type: boolean
+        label: Requires Attachment
+        default: false
+      isActive:
+        type: boolean
+        label: Active
+        default: true
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: Leave Type Details
+      summaryFields:
+        - name
+        - code
+        - isPaid
+        - requiresAttachment
+        - isActive
+        - description
+        - createdAt
+        - updatedAt

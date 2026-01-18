@@ -1,6 +1,6 @@
 {
   "name": "@hit/feature-pack-hrm",
-  "version": "1.0.60",
+  "version": "1.0.61",
   "description": "A HIT feature pack",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -69,7 +69,6 @@
     "drizzle-zod": ">=0.7.0",
     "next": "15.5.9",
     "react": "19.2.3",
-    "reactflow": "^11.11.4",
     "zod": "^4.3.2"
   },
   "peerDependenciesMeta": {
@@ -98,7 +97,6 @@
     "next": "^15.5.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "reactflow": "^11.11.4",
     "typescript": "^5.0.0",
     "zod": "^4.3.2"
   }

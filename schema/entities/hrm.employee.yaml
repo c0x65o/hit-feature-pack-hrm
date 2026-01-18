@@ -19,6 +19,15 @@ entities:
         saveUpdateLabel: Save
         cancelLabel: Cancel
         allowCreate: false
+      headerActions:
+        - kind: action
+          actionKey: hrm.employees.sync
+          label: Sync Employees
+          icon: refresh
+          listOnly: true
+          confirm:
+            title: Sync employees?
+            body: This will sync HRM employees with auth users and update active status.
 
     # Schema-driven page security (source of truth for EntityList/Detail/New/Edit pages).
     # This is used by route generation to populate routes-meta.ts authz/roles.
@@ -41,7 +50,7 @@ entities:
         authz: { entity: employees, verb: write, require_action: hrm.employees.edit.access, show_pages: true }
 
     api:
-      resource: employees
+      baseUrl: /api/hrm/employees
 
     storage:
       # Drizzle table export name (re-exported by the host app's lib/schema.ts)
@@ -61,6 +70,8 @@ entities:
         - lastName
         - positionName
         - preferredName
+        - jobLevel
+        - hireDate
         - phone
         - city
         - state
@@ -86,6 +97,8 @@ entities:
         - firstName
         - lastName
         - positionName
+        - jobLevel
+        - hireDate
         - isActive
         - phone
         - city
@@ -99,7 +112,7 @@ entities:
         - id: basics
           title: Basics
           layout: { columns: 2 }
-          fields: [userEmail, firstName, lastName, preferredName, positionId, managerId, phone]
+          fields: [userEmail, firstName, lastName, preferredName, positionId, jobLevel, hireDate, managerId, phone]
         - id: address
           title: Address
           layout: { columns: 2 }
@@ -124,6 +137,8 @@ entities:
         optionSource: hrm.positions
         labelFromRow: positionName
       positionName: { type: text, label: Position, virtual: true }
+      jobLevel: { type: number, label: Job Level }
+      hireDate: { type: date, label: Hire Date }
       divisionId:
         type: select
         label: Division
@@ -171,7 +186,9 @@ entities:
         - firstName
         - lastName
         - positionName
-        - managerId
+        - jobLevel
+        - hireDate
+        - managerName
         - phone
         - address1
         - address2
@@ -204,6 +221,9 @@ entities:
               platforms: [web]
               content:
                 kind: orgChart
+                endpoint: /api/hrm/employees/{id}/direct-reports
+                navigateTo: /hrm/employees/{id}
+                variant: compact
                 employeeIdFrom:
                   kind: parentField
                   field: id

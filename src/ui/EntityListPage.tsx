@@ -68,6 +68,7 @@ export function EntityListPage({
   const pageTitle = String(meta.titlePlural || entityKey);
   const pageDescription = String(meta.descriptionPlural || '');
   const headerActionsSpec: any[] = Array.isArray(meta?.headerActions) ? meta.headerActions : [];
+  const actionsMeta: any = meta?.actions || {};
 
   const tableId = String(listSpec.tableId || entityKey);
   const uiStateVersion = String(listSpec.uiStateVersion || '').trim();
@@ -197,7 +198,23 @@ export function EntityListPage({
     return nodes.length > 0 ? <div className="flex items-center gap-2">{nodes}</div> : null;
   };
 
-  const headerActions = renderSpecHeaderActions();
+  const allowCreate = actionsMeta?.allowCreate !== false;
+  const createHref = routes?.new ? String(routes.new) : '';
+  const createLabel = String(actionsMeta.createLabel || `New ${meta.titleSingular || entityKey}`);
+  const createAction = createHref && allowCreate ? (
+    <Button variant="primary" size="sm" onClick={() => navigate(createHref)}>
+      {createLabel}
+    </Button>
+  ) : null;
+
+  const specActions = renderSpecHeaderActions();
+  const headerActions =
+    createAction || specActions ? (
+      <div className="flex items-center gap-2">
+        {createAction}
+        {specActions}
+      </div>
+    ) : null;
 
   return (
     <Page title={pageTitle} description={pageDescription} onNavigate={navigate} actions={headerActions || undefined}>

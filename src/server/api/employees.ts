@@ -338,6 +338,8 @@ export async function GET(request: NextRequest) {
     lastName: employees.lastName,
     preferredName: employees.preferredName,
     positionName: positions.name,
+    jobLevel: employees.jobLevel,
+    hireDate: employees.hireDate,
     phone: employees.phone,
     city: employees.city,
     state: employees.state,
@@ -345,6 +347,7 @@ export async function GET(request: NextRequest) {
     createdAt: employees.createdAt,
     updatedAt: employees.updatedAt,
   };
+
 
   const orderCol = sortColumns[sortBy] ?? employees.lastName;
   const orderDir = sortOrder === 'desc' ? desc(orderCol) : asc(orderCol);
@@ -361,8 +364,11 @@ export async function GET(request: NextRequest) {
     firstName: string;
     lastName: string;
     preferredName: string | null;
+    displayName: string | null;
     positionId: string | null;
     positionName: string | null;
+    jobLevel: number | null;
+    hireDate: string | null;
     phone: string | null;
     city: string | null;
     state: string | null;
@@ -379,8 +385,11 @@ export async function GET(request: NextRequest) {
       firstName: employees.firstName,
       lastName: employees.lastName,
       preferredName: employees.preferredName,
+      displayName: sql<string>`coalesce(${employees.preferredName}, concat(${employees.firstName}, ' ', ${employees.lastName}), ${employees.userEmail})`,
       positionId: employees.positionId,
       positionName: positions.name,
+      jobLevel: employees.jobLevel,
+      hireDate: employees.hireDate,
       phone: employees.phone,
       city: employees.city,
       state: employees.state,
@@ -395,6 +404,7 @@ export async function GET(request: NextRequest) {
   const employeeRows: EmployeeRow[] = whereClause
     ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)
     : await baseQuery.orderBy(orderDir).limit(pageSize).offset(offset);
+
 
   // Enrich with LDD data using raw SQL query (org tables are from auth-core)
   const userEmails = employeeRows.map((e: EmployeeRow) => e.userEmail);
@@ -443,6 +453,7 @@ export async function GET(request: NextRequest) {
   // Merge employee data with LDD
   const items = employeeRows.map((emp: EmployeeRow) => ({
     ...emp,
+    displayName: String((emp as any)?.displayName || '').trim(),
     divisionName: lddMap[emp.userEmail]?.divisionName || null,
     departmentName: lddMap[emp.userEmail]?.departmentName || null,
     locationName: lddMap[emp.userEmail]?.locationName || null,

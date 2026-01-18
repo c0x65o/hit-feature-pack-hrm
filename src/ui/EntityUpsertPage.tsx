@@ -269,7 +269,8 @@ export function EntityUpsertPage({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!recordId) {
+    const isCreate = !recordId;
+    if (isCreate && !upsert?.create) {
       setError('Create is not supported for this entity.');
       return;
     }
@@ -298,6 +299,17 @@ export function EntityUpsertPage({
         }
         payload[k] = v;
       }
+      if (isCreate) {
+        const created = await upsert.create?.(payload);
+        const createdId = String(created?.id || created?.record?.id || '');
+        if (createdId) {
+          navigate(detailHrefForId(createdId));
+        } else {
+          navigate(String(routes.list || '/'));
+        }
+        return;
+      }
+
       await upsert.update(recordId, payload);
       if (canEditOrgAssignment && orgAssignment && orgAssignmentDirty && userEmail) {
         const assignmentPayload = {

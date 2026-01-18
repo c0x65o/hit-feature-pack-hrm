@@ -16,6 +16,30 @@ schema:
     - Employee
     - InsertEmployee
     - UpdateEmployee
+    - leaveTypes
+    - LeaveType
+    - InsertLeaveType
+    - UpdateLeaveType
+    - ptoPolicies
+    - PtoPolicy
+    - InsertPtoPolicy
+    - UpdatePtoPolicy
+    - ptoPolicyAssignments
+    - PtoPolicyAssignment
+    - InsertPtoPolicyAssignment
+    - UpdatePtoPolicyAssignment
+    - ptoRequests
+    - PtoRequest
+    - InsertPtoRequest
+    - UpdatePtoRequest
+    - ptoBalances
+    - PtoBalance
+    - InsertPtoBalance
+    - UpdatePtoBalance
+    - ptoLedgerEntries
+    - PtoLedgerEntry
+    - InsertPtoLedgerEntry
+    - UpdatePtoLedgerEntry
 
 # ─────────────────────────────────────────────────────────────────────────────
 # API ROUTES
@@ -76,10 +100,10 @@ api:
 
 # Routes (schema-driven UI pages)
 routes:
-  # Organization Chart
+  # Organization Chart (list widget)
   - path: /hrm/org-chart
-    page: OrgChartPage
-    pack: hrm
+    page: EntityList
+    params: { entityKey: hrm.orgChart }
   # Positions
   - path: /hrm/positions
     page: EntityList
@@ -103,6 +127,72 @@ routes:
   - path: /hrm/employees/[id]/edit
     page: EntityEdit
     params: { entityKey: hrm.employee }
+  # PTO Requests
+  - path: /hrm/pto/requests
+    page: EntityList
+    params: { entityKey: hrm.ptoRequest }
+  - path: /hrm/pto/requests/new
+    page: EntityEdit
+    params: { entityKey: hrm.ptoRequest }
+  - path: /hrm/pto/requests/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoRequest }
+  - path: /hrm/pto/requests/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.ptoRequest }
+  # PTO Setup: Leave Types
+  - path: /hrm/pto/leave-types
+    page: EntityList
+    params: { entityKey: hrm.leaveType }
+  - path: /hrm/pto/leave-types/new
+    page: EntityEdit
+    params: { entityKey: hrm.leaveType }
+  - path: /hrm/pto/leave-types/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.leaveType }
+  - path: /hrm/pto/leave-types/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.leaveType }
+  # PTO Setup: Policies
+  - path: /hrm/pto/policies
+    page: EntityList
+    params: { entityKey: hrm.ptoPolicy }
+  - path: /hrm/pto/policies/new
+    page: EntityEdit
+    params: { entityKey: hrm.ptoPolicy }
+  - path: /hrm/pto/policies/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoPolicy }
+  - path: /hrm/pto/policies/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.ptoPolicy }
+  # PTO Setup: Assignments
+  - path: /hrm/pto/assignments
+    page: EntityList
+    params: { entityKey: hrm.ptoPolicyAssignment }
+  - path: /hrm/pto/assignments/new
+    page: EntityEdit
+    params: { entityKey: hrm.ptoPolicyAssignment }
+  - path: /hrm/pto/assignments/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoPolicyAssignment }
+  - path: /hrm/pto/assignments/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.ptoPolicyAssignment }
+  # PTO Balances
+  - path: /hrm/pto/balances
+    page: EntityList
+    params: { entityKey: hrm.ptoBalance }
+  - path: /hrm/pto/balances/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoBalance }
+  # PTO Ledger
+  - path: /hrm/pto/ledger
+    page: EntityList
+    params: { entityKey: hrm.ptoLedgerEntry }
+  - path: /hrm/pto/ledger/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoLedgerEntry }
 
 nav:
   - id: hrm
@@ -124,6 +214,12 @@ nav:
         icon: Network
         weight: 20
         showWhen: authenticated
+      - id: hrm-pto-requests
+        label: PTO Requests
+        path: /hrm/pto/requests
+        icon: Calendar
+        weight: 30
+        showWhen: authenticated
       - id: hrm-setup
         label: Setup
         icon: Settings
@@ -136,6 +232,42 @@ nav:
             icon: Briefcase
             weight: 10
             showWhen: authenticated
+          - id: hrm-pto-setup
+            label: PTO
+            icon: Calendar
+            weight: 20
+            showWhen: authenticated
+            children:
+              - id: hrm-pto-leave-types
+                label: Leave Types
+                path: /hrm/pto/leave-types
+                icon: Tag
+                weight: 10
+                showWhen: authenticated
+              - id: hrm-pto-policies
+                label: PTO Policies
+                path: /hrm/pto/policies
+                icon: ClipboardList
+                weight: 20
+                showWhen: authenticated
+              - id: hrm-pto-assignments
+                label: PTO Assignments
+                path: /hrm/pto/assignments
+                icon: UsersRound
+                weight: 30
+                showWhen: authenticated
+              - id: hrm-pto-balances
+                label: PTO Balances
+                path: /hrm/pto/balances
+                icon: Scale
+                weight: 40
+                showWhen: authenticated
+              - id: hrm-pto-ledger
+                label: PTO Ledger
+                path: /hrm/pto/ledger
+                icon: FileSpreadsheet
+                weight: 50
+                showWhen: authenticated
 
 requires:
   modules: [auth]

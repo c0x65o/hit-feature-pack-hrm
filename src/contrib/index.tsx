@@ -7,8 +7,18 @@
 'use client';
 
 import React from 'react';
-import { OrgChart } from '../ui/components/OrgChart';
+import { OrgChart } from '@hit/ui-kit';
 import { getEntityActionHandler } from '../ui/entityActions';
+
+export type PackListWidgetRendererArgs = {
+  entityKey: string;
+  uiSpec: any;
+  listSpec: any;
+  navigate?: (path: string) => void;
+  ui?: any;
+  platform?: string;
+  params?: Record<string, string>;
+};
 
 export type PackDetailExtraRendererArgs = {
   entityKey: string;
@@ -21,6 +31,7 @@ export type PackDetailExtraRendererArgs = {
 };
 
 export type PackContrib = {
+  listWidgets?: Record<string, (args: PackListWidgetRendererArgs) => React.ReactNode>;
   detailExtras?: Record<string, (args: PackDetailExtraRendererArgs) => React.ReactNode>;
   actionHandlers?: Record<string, (args: PackActionHandlerContext) => void | Promise<void>>;
 };
@@ -32,24 +43,23 @@ export type PackActionHandlerContext = {
   navigate?: (path: string) => void;
 };
 
-function resolveEmployeeId(args: PackDetailExtraRendererArgs): string {
-  const spec = args?.spec || {};
-  const record = args?.record || {};
-  const employeeIdFrom = spec?.employeeIdFrom || {};
-  const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
-  const value =
-    employeeIdFrom?.kind === 'parentField'
-      ? record?.[fromField]
-      : record?.[fromField] ?? record?.id;
-  return value == null ? '' : String(value).trim();
-}
-
 export const contrib: PackContrib = {
+  listWidgets: {
+    orgChart: (args) => {
+      const listSpec = (args?.listSpec || {}) as any;
+      const options = listSpec?.widgetOptions && typeof listSpec.widgetOptions === 'object' ? listSpec.widgetOptions : {};
+      const spec = {
+        endpoint: String(options.endpoint || listSpec.endpoint || '').trim(),
+        navigateTo: String(options.navigateTo || listSpec.navigateTo || '').trim(),
+        variant: options.variant || listSpec.variant || 'full',
+        height: options.height || listSpec.height || 640,
+      };
+      return <OrgChart spec={spec} onNavigate={args?.navigate} />;
+    },
+  },
   detailExtras: {
     orgChart: (args) => {
-      const employeeId = resolveEmployeeId(args);
-      if (!employeeId) return null;
-      return <OrgChart employeeId={employeeId} onNavigate={args?.navigate} />;
+      return <OrgChart spec={args?.spec} record={args?.record} onNavigate={args?.navigate} />;
     },
   },
   actionHandlers: {

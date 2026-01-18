@@ -1,11 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { useUi } from '@hit/ui-kit';
-import { useEntityResolver } from '@hit/ui-kit';
+import { OrgChart, useUi, useEntityResolver } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
 import { EmbeddedEntityTable, type EmbeddedTableSpec } from './EmbeddedEntityTable';
-import { OrgChart } from './components/OrgChart';
 import { getHitPlatform } from './platformVisibility';
 
 function asRecord(v: unknown): Record<string, any> | null {
@@ -137,11 +135,7 @@ export function EntityDetailBody({
       return <EmbeddedEntityTable spec={spec as EmbeddedTableSpec} parent={record} navigate={navigate} />;
     }
     if (kind === 'orgChart') {
-      const employeeIdFrom = asRecord(spec?.employeeIdFrom) || {};
-      const fromField = String(employeeIdFrom.field || 'id').trim() || 'id';
-      const employeeId = String((record as any)?.[fromField] ?? (record as any)?.id ?? '').trim();
-      if (!employeeId) return null;
-      return <OrgChart employeeId={employeeId} onNavigate={navigate} />;
+      return <OrgChart spec={spec} record={record} onNavigate={navigate} />;
     }
     return (
       <Alert variant="warning" title="Unsupported detail extra">
