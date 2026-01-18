@@ -116,18 +116,55 @@ export async function GET(request) {
             .select(selectFields)
             .from(employees)
             .leftJoin(positions, eq(employees.positionId, positions.id));
+    // Fetch LDD data for all employees
+    const userEmails = rows.map((r) => String(r.userEmail || '')).filter(Boolean);
+    const lddMap = {};
+    if (userEmails.length > 0) {
+        try {
+            const emailParams = sql.join(userEmails.map((e) => sql `${e}`), sql `, `);
+            const lddResult = await db.execute(sql `
+        SELECT 
+          a.user_key,
+          d.name as division_name,
+          dp.name as department_name,
+          l.name as location_name
+        FROM org_user_assignments a
+        LEFT JOIN org_divisions d ON d.id = a.division_id
+        LEFT JOIN org_departments dp ON dp.id = a.department_id
+        LEFT JOIN org_locations l ON l.id = a.location_id
+        WHERE a.user_key IN (${emailParams})
+      `);
+            const lddRows = lddResult.rows;
+            for (const row of lddRows) {
+                lddMap[row.user_key] = {
+                    divisionName: row.division_name,
+                    departmentName: row.department_name,
+                    locationName: row.location_name,
+                };
+            }
+        }
+        catch (e) {
+            // LDD tables might not exist yet - continue without grouping data
+            console.error('Failed to fetch LDD data for org tree:', e);
+        }
+    }
     const nodesById = new Map();
     for (const row of rows) {
+        const email = String(row.userEmail || '');
+        const ldd = lddMap[email] || { divisionName: null, departmentName: null, locationName: null };
         nodesById.set(String(row.id), {
             id: String(row.id),
             managerId: row.managerId ? String(row.managerId) : null,
-            userEmail: String(row.userEmail || ''),
+            userEmail: email,
             firstName: String(row.firstName || ''),
             lastName: String(row.lastName || ''),
             preferredName: row.preferredName ? String(row.preferredName) : null,
             profilePictureUrl: row.profilePictureUrl ? String(row.profilePictureUrl) : null,
             positionName: row.positionName ? String(row.positionName) : null,
             isActive: Boolean(row.isActive),
+            locationName: ldd.locationName,
+            divisionName: ldd.divisionName,
+            departmentName: ldd.departmentName,
             children: [],
         });
     }
@@ -143,5 +180,24 @@ export async function GET(request) {
     if (!roots.length) {
         return jsonError('No org chart data available', 404);
     }
-    return NextResponse.json({ orgTree: roots });
+    // Collect unique group names for filter UI
+    const locations = new Set();
+    const divisions = new Set();
+    const departments = new Set();
+    for (const node of nodesById.values()) {
+        if (node.locationName)
+            locations.add(node.locationName);
+        if (node.divisionName)
+            divisions.add(node.divisionName);
+        if (node.departmentName)
+            departments.add(node.departmentName);
+    }
+    return NextResponse.json({
+        orgTree: roots,
+        groups: {
+            locations: Array.from(locations).sort(),
+            divisions: Array.from(divisions).sort(),
+            departments: Array.from(departments).sort(),
+        },
+    });
 }
