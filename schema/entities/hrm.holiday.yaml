@@ -1,0 +1,110 @@
+version: 1
+
+entities:
+  hrm.holiday:
+    meta:
+      titleSingular: Holiday
+      titlePlural: Holidays
+      descriptionPlural: Company holidays
+      routes:
+        root: /hrm/pto
+        list: /hrm/pto/holidays
+        new: /hrm/pto/holidays/new
+        detail: /hrm/pto/holidays/{id}
+        edit: /hrm/pto/holidays/{id}/edit
+      breadcrumbs:
+        - { label: HRM, href: /hrm }
+        - { label: PTO, href: /hrm/pto/requests }
+        - { label: Holidays, href: /hrm/pto/holidays }
+      actions:
+        createLabel: New Holiday
+        editLabel: Edit Holiday
+        saveCreateLabel: Create Holiday
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        deleteLabel: Delete
+        deleteConfirmTitle: Delete Holiday
+        deleteConfirmBody: Are you sure you want to delete "{name}"? This action cannot be undone.
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: holidays, verb: read, require_action: hrm.setup.holidays.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: holidays, verb: read, require_action: hrm.setup.holidays.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: holidays, verb: write, require_action: hrm.setup.holidays.manage, require_create: true, show_pages: true }
+      edit:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: holidays, verb: write, require_action: hrm.setup.holidays.manage, show_pages: true }
+
+    api:
+      resource: holidays
+
+    storage:
+      drizzleTable: holidays
+
+    list:
+      tableId: hrm.holidays
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: holidayDate, sortOrder: asc }
+      sortWhitelist: [holidayDate, name, locationName, isActive, createdAt]
+      initialColumnVisibility:
+        holidayDate: true
+        name: true
+        locationName: true
+        isActive: true
+        createdAt: false
+      columns:
+        - holidayDate
+        - name
+        - locationName
+        - isActive
+        - createdAt
+
+    form:
+      sections:
+        - id: basics
+          title: Holiday
+          layout: { columns: 2 }
+          fields: [name, holidayDate, locationId, isActive]
+        - id: description
+          title: Description
+          layout: { columns: 1 }
+          fields: [description]
+
+    fields:
+      id: { type: text, label: ID }
+      name: { type: text, label: Name, required: true }
+      holidayDate: { type: date, label: Date, required: true }
+      description: { type: textarea, label: Description }
+      locationId:
+        type: select
+        label: Location
+        optionSource: org.locations
+        labelFromRow: locationName
+      locationName: { type: text, label: Location, virtual: true }
+      isActive:
+        type: boolean
+        label: Active
+        default: true
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: Holiday Details
+      summaryFields:
+        - holidayDate
+        - name
+        - locationName
+        - isActive
+        - description
+        - createdAt
+        - updatedAt

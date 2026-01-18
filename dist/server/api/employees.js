@@ -56,10 +56,6 @@ export async function GET(request) {
     const managerId = (sp.get('managerId') || '').trim();
     const sortBy = (sp.get('sortBy') || 'lastName').trim();
     const sortOrder = (sp.get('sortOrder') || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
-    const groupCountsField = (sp.get('groupCountsField') || '').trim();
-    const groupCountsLabelField = (sp.get('groupCountsLabelField') || '').trim();
-    const groupOrderByRaw = (sp.get('groupOrderBy') || '').trim();
-    const groupOrderDirectionRaw = (sp.get('groupOrderDirection') || '').trim().toLowerCase();
     // Foolproof invariant: ensure employee rows exist for all auth users before listing.
     // No manual syncs. This runs on every list call and is idempotent.
     const provisionMeta = {
@@ -286,26 +282,6 @@ export async function GET(request) {
             createdAt: employees.createdAt,
             updatedAt: employees.updatedAt,
         };
-        const groupColumns = {
-            userEmail: employees.userEmail,
-            firstName: employees.firstName,
-            lastName: employees.lastName,
-            preferredName: employees.preferredName,
-            positionId: employees.positionId,
-            positionName: positions.name,
-            jobLevel: employees.jobLevel,
-            hireDate: employees.hireDate,
-            phone: employees.phone,
-            city: employees.city,
-            state: employees.state,
-            country: employees.country,
-            isActive: employees.isActive,
-            createdAt: employees.createdAt,
-            updatedAt: employees.updatedAt,
-        };
-        const relatedOrderColumns = {
-            positionId: positions.level,
-        };
         const orderCol = sortColumns[sortBy] ?? employees.lastName;
         const orderDir = sortOrder === 'desc' ? desc(orderCol) : asc(orderCol);
         const countQuery = db.select({ count: sql `count(*)` }).from(employees);
@@ -336,78 +312,6 @@ export async function GET(request) {
         const employeeRows = whereClause
             ? await baseQuery.where(whereClause).orderBy(orderDir).limit(pageSize).offset(offset)
             : await baseQuery.orderBy(orderDir).limit(pageSize).offset(offset);
-        let groupCounts = null;
-        let groupOrder = null;
-        const groupCol = groupCountsField ? groupColumns[groupCountsField] : null;
-        const labelCol = groupCountsLabelField ? groupColumns[groupCountsLabelField] : null;
-        if (groupCol) {
-            const groupExpr = labelCol || groupCol;
-            const groupKeyExpr = sql `coalesce(${groupExpr}, '')`;
-            const relatedOrderCol = relatedOrderColumns[groupCountsField] ?? null;
-            const groupQuery = db
-                .select({
-                groupKey: groupKeyExpr,
-                count: sql `count(*)`,
-                sortOrder: relatedOrderCol ?? sql `null`,
-            })
-                .from(employees)
-                .leftJoin(positions, eq(employees.positionId, positions.id))
-                .groupBy(groupExpr, relatedOrderCol ?? sql `null`);
-            const groupRows = whereClause ? await groupQuery.where(whereClause) : await groupQuery;
-            groupCounts = {};
-            for (const row of groupRows) {
-                const key = String(row?.groupKey ?? '');
-                const count = Number(row?.count ?? 0) || 0;
-                groupCounts[key] = count;
-            }
-            const orderBy = groupOrderByRaw || 'auto';
-            let orderDirection = groupOrderDirectionRaw === 'desc' ? 'desc' : 'asc';
-            if (!groupOrderDirectionRaw && orderBy === 'count')
-                orderDirection = 'desc';
-            const dir = orderDirection === 'desc' ? -1 : 1;
-            const compareKeys = (a, b) => {
-                if (!a && !b)
-                    return 0;
-                if (!a)
-                    return 1;
-                if (!b)
-                    return -1;
-                return a.localeCompare(b);
-            };
-            const rows = groupRows.map((row) => ({
-                key: String(row?.groupKey ?? ''),
-                count: Number(row?.count ?? 0) || 0,
-                sortOrder: row?.sortOrder === null || row?.sortOrder === undefined ? null : Number(row.sortOrder),
-            }));
-            const hasRelatedOrder = rows.some((r) => Number.isFinite(r.sortOrder));
-            const effectiveOrderBy = orderBy === 'auto' ? (hasRelatedOrder ? 'relatedSortOrder' : 'value') : orderBy;
-            if (effectiveOrderBy === 'count') {
-                rows.sort((a, b) => {
-                    if (a.count !== b.count)
-                        return dir * (a.count - b.count);
-                    return compareKeys(a.key, b.key);
-                });
-            }
-            else if (effectiveOrderBy === 'relatedSortOrder' && hasRelatedOrder) {
-                rows.sort((a, b) => {
-                    const aSort = Number.isFinite(a.sortOrder) ? a.sortOrder : null;
-                    const bSort = Number.isFinite(b.sortOrder) ? b.sortOrder : null;
-                    if (aSort !== null || bSort !== null) {
-                        if (aSort === null)
-                            return 1;
-                        if (bSort === null)
-                            return -1;
-                        if (aSort !== bSort)
-                            return dir * (aSort - bSort);
-                    }
-                    return compareKeys(a.key, b.key);
-                });
-            }
-            else {
-                rows.sort((a, b) => dir * compareKeys(a.key, b.key));
-            }
-            groupOrder = rows.map((r) => r.key);
-        }
         // Enrich with LDD data using raw SQL query (org tables are from auth-core)
         const userEmails = employeeRows.map((e) => e.userEmail);
         const lddMap = {};
@@ -459,8 +363,6 @@ export async function GET(request) {
                 totalPages: Math.ceil(total / pageSize),
             },
             meta: provisionMeta,
-            ...(groupCounts ? { groupCounts, groupCountsField: groupCountsLabelField || groupCountsField } : {}),
-            ...(groupOrder ? { groupOrder, groupOrderBy: groupOrderByRaw || 'auto', groupOrderDirection: groupOrderDirectionRaw || null } : {}),
         });
     }
     catch (e) {

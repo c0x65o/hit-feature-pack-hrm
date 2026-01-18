@@ -101,6 +101,34 @@ export const InsertEmployeeSchema = createInsertSchema(employees, {
     isActive: z.boolean().optional(),
 });
 /**
+ * Company Holidays
+ */
+export const holidays = pgTable('hrm_holidays', {
+    id: uuid('id').primaryKey().defaultRandom().notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    holidayDate: date('holiday_date').notNull(),
+    description: text('description'),
+    locationId: uuid('location_id'),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+        .defaultNow()
+        .notNull()
+        .$onUpdate(() => new Date()),
+}, (table) => ({
+    nameIdx: index('hrm_holidays_name_idx').on(table.name),
+    dateIdx: index('hrm_holidays_date_idx').on(table.holidayDate),
+    locationIdx: index('hrm_holidays_location_idx').on(table.locationId),
+}));
+export const HolidaySchema = createSelectSchema(holidays);
+export const InsertHolidaySchema = createInsertSchema(holidays, {
+    name: z.string().min(1).max(255),
+    holidayDate: z.string(),
+    description: z.string().optional(),
+    locationId: z.string().uuid().optional(),
+    isActive: z.boolean().optional(),
+});
+/**
  * PTO / Leave Types
  */
 export const leaveTypes = pgTable('hrm_leave_types', {

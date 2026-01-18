@@ -16,6 +16,10 @@ schema:
     - Employee
     - InsertEmployee
     - UpdateEmployee
+    - holidays
+    - Holiday
+    - InsertHoliday
+    - UpdateHoliday
     - leaveTypes
     - LeaveType
     - InsertLeaveType
@@ -153,6 +157,19 @@ routes:
   - path: /hrm/pto/leave-types/[id]/edit
     page: EntityEdit
     params: { entityKey: hrm.leaveType }
+  # PTO Setup: Holidays
+  - path: /hrm/pto/holidays
+    page: EntityList
+    params: { entityKey: hrm.holiday }
+  - path: /hrm/pto/holidays/new
+    page: EntityEdit
+    params: { entityKey: hrm.holiday }
+  - path: /hrm/pto/holidays/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.holiday }
+  - path: /hrm/pto/holidays/[id]/edit
+    page: EntityEdit
+    params: { entityKey: hrm.holiday }
   # PTO Setup: Policies
   - path: /hrm/pto/policies
     page: EntityList
@@ -244,11 +261,17 @@ nav:
                 icon: Tag
                 weight: 10
                 showWhen: authenticated
+          - id: hrm-pto-holidays
+            label: Holidays
+            path: /hrm/pto/holidays
+            icon: CalendarDays
+            weight: 15
+            showWhen: authenticated
               - id: hrm-pto-policies
                 label: PTO Policies
                 path: /hrm/pto/policies
                 icon: ClipboardList
-                weight: 20
+            weight: 20
                 showWhen: authenticated
               - id: hrm-pto-assignments
                 label: PTO Assignments
