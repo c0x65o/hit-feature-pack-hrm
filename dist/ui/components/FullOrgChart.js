@@ -191,7 +191,7 @@ export function FullOrgChart({ apiPath, onNavigate }) {
                 minHeight: 400,
             }, children: _jsx("div", { style: { color: '#64748b', fontSize: 14 }, children: "No organization chart data available." }) }));
     }
-    return (_jsx("div", { style: { height: '100%', width: '100%', minHeight: 600 }, children: _jsxs(ReactFlow, { nodes: nodes, edges: edges, nodeTypes: nodeTypes, fitView: true, fitViewOptions: { padding: 0.2 }, nodesDraggable: false, nodesConnectable: false, elementsSelectable: false, onNodeClick: ((_, node) => {
+    return (_jsx("div", { style: { height: 600, width: '100%' }, children: _jsxs(ReactFlow, { nodes: nodes, edges: edges, nodeTypes: nodeTypes, fitView: true, fitViewOptions: { padding: 0.2 }, nodesDraggable: false, nodesConnectable: false, elementsSelectable: false, onNodeClick: ((_, node) => {
                 if (!onNavigate)
                     return;
                 const id = String(node?.id || '').trim();

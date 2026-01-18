@@ -293,7 +293,7 @@ export function FullOrgChart({ apiPath, onNavigate }: FullOrgChartProps) {
   }
 
   return (
-    <div style={{ height: '100%', width: '100%', minHeight: 600 }}>
+    <div style={{ height: 600, width: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

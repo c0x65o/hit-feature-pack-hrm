@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
-import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 
@@ -158,6 +158,8 @@ type OrgTreeNode = {
   firstName: string;
   lastName: string;
   preferredName: string | null;
+  profilePictureUrl: string | null;
+  positionName: string | null;
   isActive: boolean;
   children: OrgTreeNode[];
 };
@@ -187,30 +189,28 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const selectFields = {
+    id: employees.id,
+    managerId: employees.managerId,
+    userEmail: employees.userEmail,
+    firstName: employees.firstName,
+    lastName: employees.lastName,
+    preferredName: employees.preferredName,
+    profilePictureUrl: employees.profilePictureUrl,
+    positionName: positions.name,
+    isActive: employees.isActive,
+  };
+
   const allRows = scope.where
     ? await db
-        .select({
-          id: employees.id,
-          managerId: employees.managerId,
-          userEmail: employees.userEmail,
-          firstName: employees.firstName,
-          lastName: employees.lastName,
-          preferredName: employees.preferredName,
-          isActive: employees.isActive,
-        })
+        .select(selectFields)
         .from(employees)
+        .leftJoin(positions, eq(employees.positionId, positions.id))
         .where(scope.where)
     : await db
-        .select({
-          id: employees.id,
-          managerId: employees.managerId,
-          userEmail: employees.userEmail,
-          firstName: employees.firstName,
-          lastName: employees.lastName,
-          preferredName: employees.preferredName,
-          isActive: employees.isActive,
-        })
-        .from(employees);
+        .select(selectFields)
+        .from(employees)
+        .leftJoin(positions, eq(employees.positionId, positions.id));
 
   const nodesById = new Map<string, OrgTreeNode>();
   for (const row of allRows as any[]) {
@@ -221,6 +221,8 @@ export async function GET(request: NextRequest) {
       firstName: String(row.firstName || ''),
       lastName: String(row.lastName || ''),
       preferredName: row.preferredName ? String(row.preferredName) : null,
+      profilePictureUrl: row.profilePictureUrl ? String(row.profilePictureUrl) : null,
+      positionName: row.positionName ? String(row.positionName) : null,
       isActive: Boolean(row.isActive),
       children: [],
     });
