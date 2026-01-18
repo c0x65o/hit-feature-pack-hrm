@@ -46,6 +46,7 @@ entities:
 
     api:
       resource: pto-policies
+      baseUrl: /api/hrm/pto-policies
 
     storage:
       drizzleTable: ptoPolicies

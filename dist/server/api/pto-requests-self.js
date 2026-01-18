@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees, leaveTypes, ptoPolicies, ptoRequests } from '@/lib/feature-pack-schemas';
 import { requireAuth } from '../auth';
-import { deriveEmployeeNamesFromEmail } from '../lib/employee-provisioning';
+import { deriveEmployeeNamesFromEmail, getForwardedBearerFromRequest } from '../lib/employee-provisioning';
 import { requireHrmAction } from '../lib/require-action';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,6 +22,33 @@ function normalizeAmount(value) {
     if (!s)
         return null;
     return s;
+}
+async function resolvePolicyId(args) {
+    try {
+        const { request, employeeId, userEmail } = args;
+        const url = new URL('/api/policy/assignments/resolve', request.url);
+        const bearer = getForwardedBearerFromRequest(request);
+        const res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(bearer ? { Authorization: bearer } : {}),
+            },
+            body: JSON.stringify({
+                policyType: 'hrm.ptoPolicy',
+                employeeId,
+                userEmail,
+            }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok)
+            return null;
+        const policyId = String(json?.policyId || '').trim();
+        return policyId || null;
+    }
+    catch {
+        return null;
+    }
 }
 async function getOrCreateEmployee(db, email) {
     const rows = await db.select().from(employees).where(eq(employees.userEmail, email)).limit(1);
@@ -150,9 +177,54 @@ export async function GET(request) {
         .orderBy(orderBy)
         .limit(pageSize)
         .offset(offset);
+    const balanceResult = await db.execute(sql `
+    SELECT
+      COALESCE(SUM(balance::numeric), 0) AS balance,
+      MAX(unit) AS unit
+    FROM hrm_pto_balances
+    WHERE employee_id = ${employee.id}
+  `);
+    const balanceRow = balanceResult.rows?.[0] || {};
+    const totalBalance = Number(balanceRow.balance || 0);
+    const balanceUnit = String(balanceRow.unit || 'days');
+    const statusResult = await db.execute(sql `
+    SELECT
+      status,
+      COUNT(*) AS count,
+      COALESCE(SUM(amount::numeric), 0) AS amount
+    FROM hrm_pto_requests
+    WHERE employee_id = ${employee.id}
+    GROUP BY status
+  `);
+    let approvedAmount = 0;
+    let approvedCount = 0;
+    let pendingAmount = 0;
+    let pendingCount = 0;
+    for (const row of statusResult.rows) {
+        const status = String(row?.status || '');
+        const amount = Number(row?.amount || 0);
+        const count = Number(row?.count || 0);
+        if (status === 'approved') {
+            approvedAmount += amount;
+            approvedCount += count;
+        }
+        else if (status === 'submitted') {
+            pendingAmount += amount;
+            pendingCount += count;
+        }
+    }
     return NextResponse.json({
         items: rows,
         pagination: { page, pageSize, total: undefined },
+        summary: {
+            balance: totalBalance,
+            unit: balanceUnit,
+            available: totalBalance - pendingAmount,
+            usedAmount: approvedAmount,
+            usedCount: approvedCount,
+            pendingAmount,
+            pendingCount,
+        },
     });
 }
 /**
@@ -188,11 +260,15 @@ export async function POST(request) {
     const employee = await getOrCreateEmployee(db, user.email);
     if (!employee)
         return jsonError('Employee not found', 404);
+    const resolvedPolicyId = policyIdRaw || (await resolvePolicyId({ request, employeeId: String(employee.id), userEmail: user.email }));
+    if (!resolvedPolicyId) {
+        return jsonError('No PTO policy assignment found for this employee', 400);
+    }
     const now = new Date();
     const values = {
         employeeId: employee.id,
         leaveTypeId,
-        policyId: policyIdRaw || null,
+        policyId: resolvedPolicyId,
         status: 'submitted',
         startDate,
         endDate,

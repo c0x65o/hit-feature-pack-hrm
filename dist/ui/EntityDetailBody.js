@@ -1,5 +1,5 @@
 'use client';
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { useMemo } from 'react';
 import { Avatar, OrgChart, useEntityResolver, useUi } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
@@ -149,11 +149,11 @@ export function EntityDetailBody({ entityKey, uiSpec, record, navigate, }) {
     const inner = (_jsxs("div", { className: "space-y-4", children: [_jsxs(Card, { children: [_jsx("h2", { className: "text-lg font-semibold mb-4", children: String(detailSpec.summaryTitle || 'Details') }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: summaryFields.map((k) => (_jsx(DetailField, { uiSpec: uiSpec, record: record, fieldKey: String(k) }, `${entityKey}-${k}`))) })] }), extras
                 .filter((x) => Boolean(x) && typeof x === 'object')
                 .map((x, idx) => renderExtra(x, idx))] }));
-    return wrapWithLinkedEntityTabsIfConfigured({
-        linkedEntityTabs,
-        entityKey,
-        record,
-        navigate,
-        overview: inner,
-    });
+    return (_jsx(_Fragment, { children: wrapWithLinkedEntityTabsIfConfigured({
+            linkedEntityTabs,
+            entityKey,
+            record,
+            navigate,
+            overview: inner,
+        }) }));
 }

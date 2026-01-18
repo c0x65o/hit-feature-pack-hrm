@@ -21,6 +21,10 @@ entities:
         default_roles_allow: [admin]
         authz: { entity: employees, verb: read, require_action: hrm.org-chart.access, show_pages: true }
 
+    api:
+      endpoints:
+        list: /api/hrm/employees/org-tree
+
     list:
       widget: orgChart
       widgetMode: orgChart
@@ -32,6 +36,21 @@ entities:
         height: 640
 
     fields:
-      id: { type: text, label: ID, virtual: true }
-      label: { type: text, label: Label, virtual: true }
-      title: { type: text, label: Title, virtual: true }
+      id:
+        type: text
+        label: ID
+        virtual: true
+        compute:
+          kind: runtime
+      label:
+        type: text
+        label: Label
+        virtual: true
+        compute:
+          kind: runtime
+      title:
+        type: text
+        label: Title
+        virtual: true
+        compute:
+          kind: runtime

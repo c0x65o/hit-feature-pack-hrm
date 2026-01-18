@@ -142,7 +142,14 @@ entities:
       id: { type: text, label: ID }
       # Computed/display convenience field (not a physical column).
       # Use firstName/lastName for persistence.
-      name: { type: text, label: Name, virtual: true }
+      name:
+        type: text
+        label: Name
+        virtual: true
+        compute:
+          kind: concat
+          fields: [firstName, lastName]
+          separator: " "
       userEmail: { type: email, label: User Email, readOnly: true }
       profilePictureUrl:
         type: image
@@ -159,7 +166,13 @@ entities:
         label: Position
         optionSource: hrm.positions
         labelFromRow: positionName
-      positionName: { type: text, label: Position, virtual: true }
+      positionName:
+        type: text
+        label: Position
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: positionId
       jobLevel: { type: number, label: Job Level }
       hireDate: { type: date, label: Hire Date }
       divisionId:
@@ -167,16 +180,49 @@ entities:
         label: Division
         optionSource: org.divisions
         virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.division
+              localField: divisionId
+              foreignField: id
+          groupField: id
+          labelField: name
       departmentId:
         type: select
         label: Department
         optionSource: org.departments
         virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.department
+              localField: departmentId
+              foreignField: id
+          groupField: id
+          labelField: name
       locationId:
         type: select
         label: Location
         optionSource: org.locations
         virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.location
+              localField: locationId
+              foreignField: id
+          groupField: id
+          labelField: name
       managerId:
         type: reference
         label: Manager
@@ -186,7 +232,13 @@ entities:
           valueField: id
           labelField: displayName
           labelFromRow: managerName
-      managerName: { type: text, label: Manager, virtual: true }
+      managerName:
+        type: text
+        label: Manager
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: managerId
       isActive: { type: boolean, label: Active, default: true }
       phone: { type: phone, label: Phone }
       address1: { type: text, label: Address Line 1 }
@@ -195,9 +247,51 @@ entities:
       state: { type: text, label: State/Province }
       postalCode: { type: text, label: Postal Code }
       country: { type: text, label: Country }
-      divisionName: { type: text, label: Division, virtual: true }
-      departmentName: { type: text, label: Department, virtual: true }
-      locationName: { type: text, label: Location, virtual: true }
+      divisionName:
+        type: text
+        label: Division
+        virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.division
+              localField: divisionId
+              foreignField: id
+          groupField: id
+          labelField: name
+      departmentName:
+        type: text
+        label: Department
+        virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.department
+              localField: departmentId
+              foreignField: id
+          groupField: id
+          labelField: name
+      locationName:
+        type: text
+        label: Location
+        virtual: true
+        compute:
+          kind: join
+          joins:
+            - entity: org.userOrgAssignment
+              localField: userEmail
+              foreignField: userKey
+            - entity: org.location
+              localField: locationId
+              foreignField: id
+          groupField: id
+          labelField: name
       createdAt: { type: datetime, label: Created }
       updatedAt: { type: datetime, label: Updated }
 

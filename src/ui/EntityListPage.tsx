@@ -18,7 +18,42 @@ type ListSpec = {
   initialColumnVisibility?: Record<string, boolean>;
   initialSorting?: Array<{ id: string; desc?: boolean }>;
   columns?: any;
+  header?: any;
 };
+
+function resolveHeaderValue(summary: any, path: string): any {
+  if (!summary) return undefined;
+  const raw = String(path || '').trim();
+  if (!raw) return undefined;
+  const parts = raw.split('.').filter(Boolean);
+  let cur: any = summary;
+  for (const p of parts) {
+    if (!cur || typeof cur !== 'object') return undefined;
+    cur = (cur as any)[p];
+  }
+  return cur;
+}
+
+function formatHeaderValue(value: any, format?: string): string {
+  if (value == null || value === '') return '';
+  const fmt = String(format || '').trim().toLowerCase();
+  if (!fmt) return String(value);
+  if (fmt === 'percent') {
+    const n = typeof value === 'number' ? value : Number(String(value));
+    if (!Number.isFinite(n)) return String(value);
+    return new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 2 }).format(n);
+  }
+  if (fmt === 'number') {
+    const n = typeof value === 'number' ? value : Number(String(value));
+    return Number.isFinite(n) ? n.toLocaleString() : String(value);
+  }
+  if (fmt === 'date' || fmt === 'datetime') {
+    const d = new Date(String(value));
+    if (Number.isNaN(d.getTime())) return String(value);
+    return fmt === 'date' ? d.toLocaleDateString() : d.toLocaleString();
+  }
+  return String(value);
+}
 
 export function EntityListPage({
   entityKey,
@@ -104,6 +139,7 @@ export function EntityListPage({
 
   const items = data?.items || [];
   const pagination = data?.pagination;
+  const summary = data?.summary;
   const serverGroupMeta = data?.groupMeta;
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
@@ -210,6 +246,48 @@ export function EntityListPage({
     </Button>
   ) : null;
 
+  const headerSpec = listSpec?.header && typeof listSpec.header === 'object' ? listSpec.header : null;
+  const headerItems = Array.isArray(headerSpec?.items) ? headerSpec.items : [];
+  const renderHeader = () => {
+    if (!headerSpec || headerItems.length === 0) return null;
+    const title = String(headerSpec.title || '').trim();
+    const description = String(headerSpec.description || '').trim();
+    return (
+      <Card>
+        <div className="flex flex-col gap-4">
+          {(title || description) && (
+            <div>
+              {title && <div className="text-lg font-semibold">{title}</div>}
+              {description && <div className="text-sm text-muted-foreground">{description}</div>}
+            </div>
+          )}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {headerItems.map((item: any, idx: number) => {
+              if (!item || typeof item !== 'object') return null;
+              const label = String(item?.label || item?.key || `Item ${idx + 1}`);
+              const valueKey = String(item?.valueKey || '').trim();
+              const rawValue = valueKey ? resolveHeaderValue(summary, valueKey) : item?.value;
+              const value = formatHeaderValue(rawValue, item?.format);
+              const prefix = item?.prefix != null ? String(item.prefix) : '';
+              const suffixKey = String(item?.suffixKey || '').trim();
+              const suffix = item?.suffix != null ? String(item.suffix) : (suffixKey ? resolveHeaderValue(summary, suffixKey) : '');
+              return (
+                <div key={String(item?.key || idx)} className="rounded-lg border p-4">
+                  <div className="text-sm text-muted-foreground">{label}</div>
+                  <div className="mt-2 text-2xl font-semibold">
+                    {prefix ? `${prefix} ` : ''}
+                    {value || '0'}
+                    {suffix ? ` ${suffix}` : ''}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
   const specActions = renderSpecHeaderActions();
   const headerActions =
     createAction || specActions ? (
@@ -221,6 +299,7 @@ export function EntityListPage({
 
   return (
     <Page title={pageTitle} description={pageDescription} onNavigate={navigate} actions={headerActions || undefined}>
+      {renderHeader()}
       <Card>
         <DataTable
           columns={columns}

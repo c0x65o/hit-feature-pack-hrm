@@ -105,11 +105,19 @@ api:
     - path: /api/hrm/pto-requests-self
       methods: [GET, POST]
       handler: "@hit/feature-pack-hrm/server/api/pto-requests-self"
-      description: "Self-service PTO requests for the current employee."
+      description: "List or create PTO requests for the current employee."
     - path: /api/hrm/pto-requests-self/[id]
       methods: [GET, PUT]
       handler: "@hit/feature-pack-hrm/server/api/pto-requests-self-id"
-      description: "Self-service PTO request detail (current employee only)."
+      description: "Get PTO request detail for the current employee."
+    - path: /api/hrm/pto-requests
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-hrm/server/api/pto-requests"
+      description: "Admin list or create PTO requests."
+    - path: /api/hrm/pto-requests/[id]
+      methods: [GET, PUT, DELETE]
+      handler: "@hit/feature-pack-hrm/server/api/pto-requests-id"
+      description: "Admin get/update/delete PTO requests."
 
 # Routes (schema-driven UI pages)
 routes:

@@ -204,12 +204,16 @@ export function EntityDetailBody({
     </div>
   );
 
-  return wrapWithLinkedEntityTabsIfConfigured({
-    linkedEntityTabs,
-    entityKey,
-    record,
-    navigate,
-    overview: inner,
-  });
+  return (
+    <>
+      {wrapWithLinkedEntityTabsIfConfigured({
+        linkedEntityTabs,
+        entityKey,
+        record,
+        navigate,
+        overview: inner,
+      })}
+    </>
+  );
 }
 

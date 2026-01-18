@@ -7,6 +7,45 @@ import { useEntityDataTableColumns } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataSource } from './entityDataSources';
 import { getEntityActionHandler } from './entityActions';
+function resolveHeaderValue(summary, path) {
+    if (!summary)
+        return undefined;
+    const raw = String(path || '').trim();
+    if (!raw)
+        return undefined;
+    const parts = raw.split('.').filter(Boolean);
+    let cur = summary;
+    for (const p of parts) {
+        if (!cur || typeof cur !== 'object')
+            return undefined;
+        cur = cur[p];
+    }
+    return cur;
+}
+function formatHeaderValue(value, format) {
+    if (value == null || value === '')
+        return '';
+    const fmt = String(format || '').trim().toLowerCase();
+    if (!fmt)
+        return String(value);
+    if (fmt === 'percent') {
+        const n = typeof value === 'number' ? value : Number(String(value));
+        if (!Number.isFinite(n))
+            return String(value);
+        return new Intl.NumberFormat(undefined, { style: 'percent', maximumFractionDigits: 2 }).format(n);
+    }
+    if (fmt === 'number') {
+        const n = typeof value === 'number' ? value : Number(String(value));
+        return Number.isFinite(n) ? n.toLocaleString() : String(value);
+    }
+    if (fmt === 'date' || fmt === 'datetime') {
+        const d = new Date(String(value));
+        if (Number.isNaN(d.getTime()))
+            return String(value);
+        return fmt === 'date' ? d.toLocaleDateString() : d.toLocaleString();
+    }
+    return String(value);
+}
 export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const { Page, Card, DataTable, Alert, Spinner, Button, AlertDialog } = useUi();
     const alertDialog = useAlertDialog();
@@ -67,6 +106,7 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     });
     const items = data?.items || [];
     const pagination = data?.pagination;
+    const summary = data?.summary;
     const serverGroupMeta = data?.groupMeta;
     const [actionLoading, setActionLoading] = useState({});
     const columns = useEntityDataTableColumns({
@@ -163,7 +203,27 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const createHref = routes?.new ? String(routes.new) : '';
     const createLabel = String(actionsMeta.createLabel || `New ${meta.titleSingular || entityKey}`);
     const createAction = createHref && allowCreate ? (_jsx(Button, { variant: "primary", size: "sm", onClick: () => navigate(createHref), children: createLabel })) : null;
+    const headerSpec = listSpec?.header && typeof listSpec.header === 'object' ? listSpec.header : null;
+    const headerItems = Array.isArray(headerSpec?.items) ? headerSpec.items : [];
+    const renderHeader = () => {
+        if (!headerSpec || headerItems.length === 0)
+            return null;
+        const title = String(headerSpec.title || '').trim();
+        const description = String(headerSpec.description || '').trim();
+        return (_jsx(Card, { children: _jsxs("div", { className: "flex flex-col gap-4", children: [(title || description) && (_jsxs("div", { children: [title && _jsx("div", { className: "text-lg font-semibold", children: title }), description && _jsx("div", { className: "text-sm text-muted-foreground", children: description })] })), _jsx("div", { className: "grid gap-4 sm:grid-cols-2 lg:grid-cols-4", children: headerItems.map((item, idx) => {
+                            if (!item || typeof item !== 'object')
+                                return null;
+                            const label = String(item?.label || item?.key || `Item ${idx + 1}`);
+                            const valueKey = String(item?.valueKey || '').trim();
+                            const rawValue = valueKey ? resolveHeaderValue(summary, valueKey) : item?.value;
+                            const value = formatHeaderValue(rawValue, item?.format);
+                            const prefix = item?.prefix != null ? String(item.prefix) : '';
+                            const suffixKey = String(item?.suffixKey || '').trim();
+                            const suffix = item?.suffix != null ? String(item.suffix) : (suffixKey ? resolveHeaderValue(summary, suffixKey) : '');
+                            return (_jsxs("div", { className: "rounded-lg border p-4", children: [_jsx("div", { className: "text-sm text-muted-foreground", children: label }), _jsxs("div", { className: "mt-2 text-2xl font-semibold", children: [prefix ? `${prefix} ` : '', value || '0', suffix ? ` ${suffix}` : ''] })] }, String(item?.key || idx)));
+                        }) })] }) }));
+    };
     const specActions = renderSpecHeaderActions();
     const headerActions = createAction || specActions ? (_jsxs("div", { className: "flex items-center gap-2", children: [createAction, specActions] })) : null;
-    return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [_jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, serverGroupMeta: serverGroupMeta || undefined, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
+    return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [renderHeader(), _jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, serverGroupMeta: serverGroupMeta || undefined, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
 }

@@ -63,3 +63,23 @@ api:
       methods: [GET]
       handler: employees-picker
       description: "Lightweight employee picker for autocomplete. Requires hrm.employees.picker permission."
+
+    # Self-service PTO requests
+    - path: /api/hrm/pto-requests-self
+      methods: [GET, POST]
+      handler: pto-requests-self
+      description: "List or create PTO requests for the current employee."
+    - path: /api/hrm/pto-requests-self/[id]
+      methods: [GET, PUT]
+      handler: pto-requests-self-id
+      description: "Get PTO request detail for the current employee."
+
+    # Admin PTO requests
+    - path: /api/hrm/pto-requests
+      methods: [GET, POST]
+      handler: pto-requests
+      description: "Admin list or create PTO requests."
+    - path: /api/hrm/pto-requests/[id]
+      methods: [GET, PUT, DELETE]
+      handler: pto-requests-id
+      description: "Admin get/update/delete PTO requests."

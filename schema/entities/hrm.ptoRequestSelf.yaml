@@ -38,7 +38,7 @@ entities:
         authz: { entity: ptoRequests, verb: write, require_action: hrm.pto.requests.self.create, show_pages: true }
 
     api:
-      resource: pto-requests-self
+      baseUrl: /api/hrm/pto-requests-self
 
     storage:
       drizzleTable: ptoRequests
@@ -48,7 +48,30 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort: { sortBy: createdAt, sortOrder: desc }
-      sortWhitelist: [leaveTypeName, status, startDate, endDate, createdAt]
+      sortWhitelist: [status, startDate, endDate, createdAt]
+      header:
+        title: My PTO Summary
+        description: Current balance and request status.
+        items:
+          - key: available
+            label: Available
+            valueKey: available
+            format: number
+            suffixKey: unit
+          - key: used
+            label: Used
+            valueKey: usedAmount
+            format: number
+            suffixKey: unit
+          - key: pending
+            label: Pending
+            valueKey: pendingAmount
+            format: number
+            suffixKey: unit
+          - key: awaiting
+            label: Awaiting Approval
+            valueKey: pendingCount
+            format: number
       initialColumnVisibility:
         leaveTypeName: true
         status: true
@@ -73,7 +96,7 @@ entities:
         - id: basics
           title: Request Details
           layout: { columns: 2 }
-          fields: [leaveTypeId, policyId, startDate, endDate, amount, unit]
+          fields: [leaveTypeId, startDate, endDate, amount, unit]
         - id: notes
           title: Notes
           layout: { columns: 1 }
@@ -88,13 +111,25 @@ entities:
         optionSource: hrm.leaveTypes
         labelFromRow: leaveTypeName
         required: true
-      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      leaveTypeName:
+        type: text
+        label: Leave Type
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: leaveTypeId
       policyId:
         type: select
         label: PTO Policy
         optionSource: hrm.ptoPolicies
         labelFromRow: policyName
-      policyName: { type: text, label: Policy, virtual: true }
+      policyName:
+        type: text
+        label: Policy
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: policyId
       status:
         type: select
         label: Status

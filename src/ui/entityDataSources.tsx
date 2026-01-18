@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEntityUiSpec } from './useHitUiSpecs';
 import { getStoredToken } from './authToken';
 
 export type ListQueryArgs = {
@@ -130,7 +131,93 @@ function buildOptions(args: {
   ];
 }
 
-function useSchemaCrudList(basePath: string, resource: string, args: ListQueryArgs) {
+type CrudEndpoints = {
+  list: string;
+  detail: string;
+  create: string;
+  update: string;
+  delete: string;
+};
+
+function isAbsoluteUrl(value: string) {
+  return value.startsWith('http://') || value.startsWith('https://');
+}
+
+function normalizeEndpointPath(value: string) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (isAbsoluteUrl(raw)) return raw;
+  if (raw.startsWith('/')) return raw;
+  return `/${raw}`;
+}
+
+function applyEndpointId(endpoint: string, id: string) {
+  const safeId = encodeURIComponent(id);
+  if (!endpoint) return endpoint;
+  if (endpoint.includes('{id}')) return endpoint.replaceAll('{id}', safeId);
+  if (endpoint.includes(':id')) return endpoint.replaceAll(':id', safeId);
+  if (endpoint.includes('[id]')) return endpoint.replaceAll('[id]', safeId);
+  if (endpoint.includes('<id>')) return endpoint.replaceAll('<id>', safeId);
+  if (endpoint.endsWith('/')) return `${endpoint}${safeId}`;
+  return `${endpoint}/${safeId}`;
+}
+
+function appendQuery(endpoint: string, params: URLSearchParams) {
+  const qs = params.toString();
+  if (!qs) return endpoint;
+  return endpoint.includes('?') ? `${endpoint}&${qs}` : `${endpoint}?${qs}`;
+}
+
+function resolveCrudEndpointsFromSpec(entityKey: string, uiSpec: any): CrudEndpoints | null {
+  const api = uiSpec && typeof uiSpec === 'object' ? (uiSpec as any).api : null;
+  if (!api || typeof api !== 'object') return null;
+  const endpointsRaw = api.endpoints && typeof api.endpoints === 'object' ? api.endpoints : null;
+  const baseUrl = String(api.baseUrl || api.base_url || '').trim();
+  const resource = String(api.resource || '').trim();
+  const namespace = String(api.namespace || api.ns || '').trim();
+
+  let basePath = '';
+  if (baseUrl) {
+    basePath = normalizeEndpointPath(baseUrl);
+  } else if (resource) {
+    if (isAbsoluteUrl(resource) || resource.startsWith('/')) {
+      basePath = normalizeEndpointPath(resource);
+    } else {
+      const group = namespace || entityKey.split('.')[0] || '';
+      basePath = group ? `/api/${group}/${resource}` : `/api/${resource}`;
+    }
+  }
+
+  const listRaw = endpointsRaw ? String((endpointsRaw as any).list || '').trim() : '';
+  const detailRaw = endpointsRaw ? String((endpointsRaw as any).detail || '').trim() : '';
+  const createRaw = endpointsRaw ? String((endpointsRaw as any).create || '').trim() : '';
+  const updateRaw = endpointsRaw ? String((endpointsRaw as any).update || '').trim() : '';
+  const deleteRaw = endpointsRaw ? String((endpointsRaw as any).delete || '').trim() : '';
+
+  const list = listRaw ? normalizeEndpointPath(listRaw) : basePath;
+  const create = createRaw ? normalizeEndpointPath(createRaw) : list;
+  const detail = detailRaw
+    ? normalizeEndpointPath(detailRaw)
+    : basePath
+      ? `${basePath.replace(/\/+$/, '')}/{id}`
+      : '';
+  const update = updateRaw ? normalizeEndpointPath(updateRaw) : detail;
+  const del = deleteRaw ? normalizeEndpointPath(deleteRaw) : detail;
+
+  if (!list && !detail && !create && !update && !del) return null;
+  return { list, detail, create, update, delete: del };
+}
+
+function resolveCrudEndpointsFromResource(entityKey: string, resource: string): CrudEndpoints {
+  const group = entityKey.split('.')[0] || '';
+  const base = resource.startsWith('/api/') || resource.startsWith('/')
+    ? normalizeEndpointPath(resource)
+    : `/api/${group}/${resource}`;
+  const detail = `${base.replace(/\/+$/, '')}/{id}`;
+  return { list: base, detail, create: base, update: detail, delete: detail };
+}
+
+function useSchemaCrudList(endpoints: CrudEndpoints, args: ListQueryArgs) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const loadTokenRef = useRef(0);
@@ -151,7 +238,9 @@ function useSchemaCrudList(basePath: string, resource: string, args: ListQueryAr
       if (args.search) qp.set('search', String(args.search));
       if (args.sortBy) qp.set('sortBy', String(args.sortBy));
       if (args.sortOrder) qp.set('sortOrder', String(args.sortOrder));
-      const res = await fetch(`${basePath}/${resource}?${qp.toString()}`, { headers: authHeaders(), credentials: 'include' });
+      const listEndpoint = endpoints.list || '';
+      if (!listEndpoint) throw new Error('Missing list endpoint');
+      const res = await fetch(appendQuery(listEndpoint, qp), { headers: authHeaders(), credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load data');
       if (token !== loadTokenRef.current) return;
@@ -161,14 +250,16 @@ function useSchemaCrudList(basePath: string, resource: string, args: ListQueryAr
         setLoading(false);
       }
     }
-  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder, args.tableId, args.viewId, args.filters, args.filterMode, basePath, resource]);
+  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder, args.tableId, args.viewId, args.filters, args.filterMode, endpoints.list]);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
 
   const deleteItem = async (id: string) => {
-    const res = await fetch(`${basePath}/${resource}/${encodeURIComponent(id)}`, {
+    const deleteEndpoint = endpoints.delete || endpoints.detail;
+    if (!deleteEndpoint) throw new Error('Missing delete endpoint');
+    const res = await fetch(applyEndpointId(deleteEndpoint, id), {
       method: 'DELETE',
       headers: authHeaders(),
       credentials: 'include',
@@ -182,7 +273,7 @@ function useSchemaCrudList(basePath: string, resource: string, args: ListQueryAr
   return { data, loading, refetch: fetchData, deleteItem };
 }
 
-function useSchemaCrudDetail(basePath: string, resource: string, id: string) {
+function useSchemaCrudDetail(endpoints: CrudEndpoints, id: string) {
   const [record, setRecord] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -190,14 +281,16 @@ function useSchemaCrudDetail(basePath: string, resource: string, id: string) {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await fetch(`${basePath}/${resource}/${encodeURIComponent(id)}`, { headers: authHeaders(), credentials: 'include' });
+      const detailEndpoint = endpoints.detail || '';
+      if (!detailEndpoint) throw new Error('Missing detail endpoint');
+      const res = await fetch(applyEndpointId(detailEndpoint, id), { headers: authHeaders(), credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load record');
       setRecord(json);
     } finally {
       setLoading(false);
     }
-  }, [basePath, resource, id]);
+  }, [endpoints.detail, id]);
 
   useEffect(() => {
     void fetchData();
@@ -206,13 +299,15 @@ function useSchemaCrudDetail(basePath: string, resource: string, id: string) {
   return { record, loading, refetch: fetchData };
 }
 
-function useSchemaCrudUpsert(basePath: string, resource: string, id?: string) {
-  const detail = useSchemaCrudDetail(basePath, resource, id || '');
+function useSchemaCrudUpsert(endpoints: CrudEndpoints, id?: string) {
+  const detail = useSchemaCrudDetail(endpoints, id || '');
   return {
     record: detail.record,
     loading: detail.loading,
     create: async (payload: any) => {
-      const res = await fetch(`${basePath}/${resource}`, {
+      const createEndpoint = endpoints.create || endpoints.list;
+      if (!createEndpoint) throw new Error('Missing create endpoint');
+      const res = await fetch(createEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         credentials: 'include',
@@ -224,7 +319,9 @@ function useSchemaCrudUpsert(basePath: string, resource: string, id?: string) {
       return json;
     },
     update: async (rid: string, payload: any) => {
-      const res = await fetch(`${basePath}/${resource}/${encodeURIComponent(rid)}`, {
+      const updateEndpoint = endpoints.update || endpoints.detail;
+      if (!updateEndpoint) throw new Error('Missing update endpoint');
+      const res = await fetch(applyEndpointId(updateEndpoint, rid), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', ...authHeaders() },
         credentials: 'include',
@@ -437,6 +534,7 @@ function useHrmDirectReports(employeeId: string): DirectReportsResult {
 }
 
 export function useEntityDataSource(entityKey: string): EntityDataSource | null {
+  const uiSpec = useEntityUiSpec(entityKey);
   const employeeReferenceRenderer = useEmployeeReferenceRenderer();
   const positionsSource = useOptionSource({
     basePath: '/api/hrm',
@@ -555,12 +653,15 @@ export function useEntityDataSource(entityKey: string): EntityDataSource | null 
   };
 
   const resource = resourceMap[entityKey];
-  if (!resource) return null;
+  const specEndpoints = resolveCrudEndpointsFromSpec(entityKey, uiSpec);
+  const fallbackEndpoints = resource ? resolveCrudEndpointsFromResource(entityKey, resource) : null;
+  const endpoints = specEndpoints || fallbackEndpoints;
+  if (!endpoints) return null;
 
   return {
-    useList: (args) => useSchemaCrudList('/api/hrm', resource, args),
-    useDetail: ({ id }) => useSchemaCrudDetail('/api/hrm', resource, id),
-    useUpsert: ({ id }) => useSchemaCrudUpsert('/api/hrm', resource, id),
+    useList: (args) => useSchemaCrudList(endpoints, args),
+    useDetail: ({ id }) => useSchemaCrudDetail(endpoints, id),
+    useUpsert: ({ id }) => useSchemaCrudUpsert(endpoints, id),
     useFormRegistries: () => baseRegistries,
   };
 }

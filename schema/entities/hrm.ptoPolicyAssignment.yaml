@@ -46,6 +46,7 @@ entities:
 
     api:
       resource: pto-policy-assignments
+      baseUrl: /api/hrm/pto-policy-assignments
 
     storage:
       drizzleTable: ptoPolicyAssignments
@@ -55,7 +56,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort: { sortBy: createdAt, sortOrder: desc }
-      sortWhitelist: [policyName, employeeId, effectiveDate, isActive, createdAt]
+      sortWhitelist: [employeeId, effectiveDate, isActive, createdAt]
       initialColumnVisibility:
         policyName: true
         employeeId: true
@@ -110,7 +111,13 @@ entities:
         optionSource: hrm.ptoPolicies
         labelFromRow: policyName
         required: true
-      policyName: { type: text, label: Policy, virtual: true }
+      policyName:
+        type: text
+        label: Policy
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: policyId
       employeeId:
         type: reference
         label: Employee
@@ -121,25 +128,49 @@ entities:
           pickerEndpoint: /api/hrm/employees/picker
           valueField: id
           labelField: displayName
-      employeeName: { type: text, label: Employee, virtual: true }
+      employeeName:
+        type: text
+        label: Employee
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: employeeId
       locationId:
         type: select
         label: Location
         optionSource: org.locations
         labelFromRow: locationName
-      locationName: { type: text, label: Location, virtual: true }
+      locationName:
+        type: text
+        label: Location
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: locationId
       departmentId:
         type: select
         label: Department
         optionSource: org.departments
         labelFromRow: departmentName
-      departmentName: { type: text, label: Department, virtual: true }
+      departmentName:
+        type: text
+        label: Department
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: departmentId
       divisionId:
         type: select
         label: Division
         optionSource: org.divisions
         labelFromRow: divisionName
-      divisionName: { type: text, label: Division, virtual: true }
+      divisionName:
+        type: text
+        label: Division
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: divisionId
       groupId: { type: text, label: Group ID }
       effectiveDate: { type: date, label: Effective Date }
       endDate: { type: date, label: End Date }

@@ -46,6 +46,7 @@ entities:
 
     api:
       resource: leave-types
+      baseUrl: /api/hrm/leave-types
 
     storage:
       drizzleTable: leaveTypes

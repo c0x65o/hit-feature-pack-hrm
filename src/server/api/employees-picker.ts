@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { asc, eq, inArray, like, or, sql } from 'drizzle-orm';
 
 import { getDb } from '@/lib/db';
-import { employees } from '@/lib/feature-pack-schemas';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { requireHrmAction } from '../lib/require-action';
 
@@ -11,6 +11,33 @@ export const runtime = 'nodejs';
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
+}
+
+async function fetchUserOrgScopeIds(db: ReturnType<typeof getDb>, userKey: string): Promise<{
+  divisionIds: string[];
+  departmentIds: string[];
+  locationIds: string[];
+}> {
+  const rows = await db
+    .select({
+      divisionId: userOrgAssignments.divisionId,
+      departmentId: userOrgAssignments.departmentId,
+      locationId: userOrgAssignments.locationId,
+    })
+    .from(userOrgAssignments)
+    .where(eq(userOrgAssignments.userKey, userKey));
+
+  const divisionIds: string[] = [];
+  const departmentIds: string[] = [];
+  const locationIds: string[] = [];
+
+  for (const r of rows as any[]) {
+    if (r.divisionId && !divisionIds.includes(r.divisionId)) divisionIds.push(r.divisionId);
+    if (r.departmentId && !departmentIds.includes(r.departmentId)) departmentIds.push(r.departmentId);
+    if (r.locationId && !locationIds.includes(r.locationId)) locationIds.push(r.locationId);
+  }
+
+  return { divisionIds, departmentIds, locationIds };
 }
 
 /**
@@ -44,12 +71,55 @@ export async function GET(request: NextRequest) {
   const ids = idsRaw ? idsRaw.split(',').map((x) => x.trim()).filter(Boolean) : [];
   const pageSizeRaw = parseInt(sp.get('pageSize') || sp.get('limit') || '25', 10) || 25;
   const pageSize = Math.min(Math.max(1, pageSizeRaw), 100);
+  const scope = String(sp.get('scope') || '').trim().toLowerCase();
+  const limitToScope = scope === 'ldd';
 
   try {
     const conditions: any[] = [];
 
     // Only show active employees
     conditions.push(eq(employees.isActive, true));
+
+    if (limitToScope) {
+      const scopeIds = await fetchUserOrgScopeIds(db, user.sub);
+      const ownKey = user.email || user.sub;
+      const ownCondition = ownKey ? eq(employees.userEmail, ownKey) : null;
+
+      const lddParts: any[] = [];
+      if (scopeIds.divisionIds.length) {
+        lddParts.push(
+          sql`exists (
+            select 1 from ${userOrgAssignments}
+            where ${userOrgAssignments.userKey} = ${employees.userEmail}
+              and ${userOrgAssignments.divisionId} in (${sql.join(scopeIds.divisionIds.map(id => sql`${id}`), sql`, `)})
+          )`
+        );
+      }
+      if (scopeIds.departmentIds.length) {
+        lddParts.push(
+          sql`exists (
+            select 1 from ${userOrgAssignments}
+            where ${userOrgAssignments.userKey} = ${employees.userEmail}
+              and ${userOrgAssignments.departmentId} in (${sql.join(scopeIds.departmentIds.map(id => sql`${id}`), sql`, `)})
+          )`
+        );
+      }
+      if (scopeIds.locationIds.length) {
+        lddParts.push(
+          sql`exists (
+            select 1 from ${userOrgAssignments}
+            where ${userOrgAssignments.userKey} = ${employees.userEmail}
+              and ${userOrgAssignments.locationId} in (${sql.join(scopeIds.locationIds.map(id => sql`${id}`), sql`, `)})
+          )`
+        );
+      }
+
+      if (lddParts.length > 0) {
+        conditions.push(ownCondition ? or(ownCondition, or(...lddParts)!)! : or(...lddParts)!);
+      } else if (ownCondition) {
+        conditions.push(ownCondition);
+      }
+    }
 
     // If id is provided, fetch a single employee by id (for resolveValue)
     if (ids.length > 0) {

@@ -1,0 +1,62 @@
+version: 1
+
+metrics:
+  fp.hrm.pto.balance_current:
+    key: fp.hrm.pto.balance_current
+    label: PTO Balance (Current)
+    description: Current PTO balance across leave types (snapshot).
+    unit: days
+    rollup_strategy: last
+    time_kind: none
+    entity_kinds: [hrm]
+    icon: Calendar
+    icon_color: "#0ea5e9"
+    default_roles_allow: [admin]
+    dimensions_schema:
+      employee_id:
+        required: false
+
+  fp.hrm.pto.used_amount:
+    key: fp.hrm.pto.used_amount
+    label: PTO Used (Approved)
+    description: Approved PTO used (snapshot).
+    unit: days
+    rollup_strategy: sum
+    time_kind: none
+    entity_kinds: [hrm]
+    icon: CheckCircle
+    icon_color: "#16a34a"
+    default_roles_allow: [admin]
+    dimensions_schema:
+      employee_id:
+        required: false
+
+  fp.hrm.pto.pending_amount:
+    key: fp.hrm.pto.pending_amount
+    label: PTO Pending (Amount)
+    description: Pending PTO amount awaiting approval (snapshot).
+    unit: days
+    rollup_strategy: sum
+    time_kind: none
+    entity_kinds: [hrm]
+    icon: Clock
+    icon_color: "#f59e0b"
+    default_roles_allow: [admin]
+    dimensions_schema:
+      employee_id:
+        required: false
+
+  fp.hrm.pto.pending_count:
+    key: fp.hrm.pto.pending_count
+    label: PTO Pending (Count)
+    description: Pending PTO requests awaiting approval (snapshot).
+    unit: count
+    rollup_strategy: sum
+    time_kind: none
+    entity_kinds: [hrm]
+    icon: ListChecks
+    icon_color: "#6366f1"
+    default_roles_allow: [admin]
+    dimensions_schema:
+      employee_id:
+        required: false

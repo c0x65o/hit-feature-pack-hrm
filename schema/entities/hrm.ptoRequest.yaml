@@ -48,7 +48,7 @@ entities:
         authz: { entity: ptoRequests, verb: write, require_action: hrm.pto.requests.manage, show_pages: true }
 
     api:
-      resource: pto-requests
+      baseUrl: /api/hrm/pto-requests
 
     storage:
       drizzleTable: ptoRequests
@@ -58,7 +58,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort: { sortBy: createdAt, sortOrder: desc }
-      sortWhitelist: [employeeId, leaveTypeName, status, startDate, endDate, createdAt]
+      sortWhitelist: [employeeId, status, startDate, endDate, createdAt]
       initialColumnVisibility:
         employeeId: true
         leaveTypeName: true
@@ -110,20 +110,38 @@ entities:
           valueField: id
           labelField: displayName
         required: true
-      employeeName: { type: text, label: Employee, virtual: true }
+      employeeName:
+        type: text
+        label: Employee
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: employeeId
       leaveTypeId:
         type: select
         label: Leave Type
         optionSource: hrm.leaveTypes
         labelFromRow: leaveTypeName
         required: true
-      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      leaveTypeName:
+        type: text
+        label: Leave Type
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: leaveTypeId
       policyId:
         type: select
         label: PTO Policy
         optionSource: hrm.ptoPolicies
         labelFromRow: policyName
-      policyName: { type: text, label: Policy, virtual: true }
+      policyName:
+        type: text
+        label: Policy
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: policyId
       status:
         type: select
         label: Status

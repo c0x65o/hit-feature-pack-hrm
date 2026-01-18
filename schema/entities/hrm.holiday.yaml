@@ -46,6 +46,7 @@ entities:
 
     api:
       resource: holidays
+      baseUrl: /api/hrm/holidays
 
     storage:
       drizzleTable: holidays
@@ -55,7 +56,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort: { sortBy: holidayDate, sortOrder: asc }
-      sortWhitelist: [holidayDate, name, locationName, isActive, createdAt]
+      sortWhitelist: [holidayDate, name, isActive, createdAt]
       initialColumnVisibility:
         holidayDate: true
         name: true
@@ -90,7 +91,13 @@ entities:
         label: Location
         optionSource: org.locations
         labelFromRow: locationName
-      locationName: { type: text, label: Location, virtual: true }
+      locationName:
+        type: text
+        label: Location
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: locationId
       isActive:
         type: boolean
         label: Active

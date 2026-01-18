@@ -32,6 +32,7 @@ entities:
 
     api:
       resource: pto-balances
+      baseUrl: /api/hrm/pto-balances
 
     storage:
       drizzleTable: ptoBalances
@@ -41,7 +42,7 @@ entities:
       uiStateVersion: 1
       pageSize: 25
       initialSort: { sortBy: updatedAt, sortOrder: desc }
-      sortWhitelist: [employeeId, leaveTypeName, balance, asOfDate, updatedAt]
+      sortWhitelist: [employeeId, balance, asOfDate, updatedAt]
       initialColumnVisibility:
         employeeId: true
         leaveTypeName: true
@@ -80,19 +81,37 @@ entities:
           pickerEndpoint: /api/hrm/employees/picker
           valueField: id
           labelField: displayName
-      employeeName: { type: text, label: Employee, virtual: true }
+      employeeName:
+        type: text
+        label: Employee
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: employeeId
       leaveTypeId:
         type: select
         label: Leave Type
         optionSource: hrm.leaveTypes
         labelFromRow: leaveTypeName
-      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      leaveTypeName:
+        type: text
+        label: Leave Type
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: leaveTypeId
       policyId:
         type: select
         label: PTO Policy
         optionSource: hrm.ptoPolicies
         labelFromRow: policyName
-      policyName: { type: text, label: Policy, virtual: true }
+      policyName:
+        type: text
+        label: Policy
+        virtual: true
+        compute:
+          kind: labelFrom
+          sourceField: policyId
       balance: { type: number, label: Balance }
       unit:
         type: select
