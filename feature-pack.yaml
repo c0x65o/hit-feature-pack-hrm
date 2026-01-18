@@ -235,7 +235,7 @@ nav:
     label: My PTO
     icon: Calendar
     path: /hub/pto
-    group: hub
+    parentId: my-hub
     weight: 20
     showWhen: authenticated
   - id: hrm
