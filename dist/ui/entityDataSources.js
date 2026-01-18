@@ -384,6 +384,7 @@ export function useEntityDataSource(entityKey) {
     }
     const resourceMap = {
         'hrm.position': 'positions',
+        'hrm.holiday': 'holidays',
         'hrm.leaveType': 'leave-types',
         'hrm.ptoPolicy': 'pto-policies',
         'hrm.ptoPolicyAssignment': 'pto-policy-assignments',

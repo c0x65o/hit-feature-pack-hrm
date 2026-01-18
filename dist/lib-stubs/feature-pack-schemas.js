@@ -5,7 +5,7 @@
  * At runtime, the consuming application provides the actual implementation
  * which is auto-generated from feature pack schemas.
  */
-export { employees, positions, leaveTypes, ptoPolicies, ptoPolicyAssignments, ptoRequests, ptoBalances, ptoLedgerEntries, } from '../schema/hrm';
+export { employees, positions, holidays, leaveTypes, ptoPolicies, ptoPolicyAssignments, ptoRequests, ptoBalances, ptoLedgerEntries, } from '../schema/hrm';
 // Cross-pack tables used by HRM server routes during compilation.
 //
 // IMPORTANT: do NOT import the real tables from other packs here. During feature pack

@@ -470,6 +470,7 @@ export function useEntityDataSource(entityKey: string): EntityDataSource | null 
 
   const resourceMap: Record<string, string> = {
     'hrm.position': 'positions',
+    'hrm.holiday': 'holidays',
     'hrm.leaveType': 'leave-types',
     'hrm.ptoPolicy': 'pto-policies',
     'hrm.ptoPolicyAssignment': 'pto-policy-assignments',

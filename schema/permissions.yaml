@@ -203,6 +203,23 @@ permissions:
       description: "Create leave types (required by require_create for hrm.leaveType)."
       default_enabled: true
 
+    - key: hrm.setup.holidays.access
+      label: "HRM Setup: Holidays"
+      description: "Access HRM setup: manage company holidays."
+      default_enabled: false
+    - key: hrm.setup.holidays.manage
+      label: "HRM Setup: Manage Holidays"
+      description: "Create, edit, and delete company holidays."
+      default_enabled: false
+    - key: hrm.setup.holidays.create
+      label: "HRM Setup: Create Holiday"
+      description: "Create holidays (required by require_create authz flag)."
+      default_enabled: true
+    - key: hrm.holidays.create
+      label: "HRM: Create Holiday"
+      description: "Create holidays (required by require_create for hrm.holiday)."
+      default_enabled: true
+
     - key: hrm.setup.pto-policies.access
       label: "HRM Setup: PTO Policies"
       description: "Access HRM setup: manage PTO policies."
