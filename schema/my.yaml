@@ -1,0 +1,12 @@
+version: 1
+
+my:
+  items:
+    my.pto:
+      label: My PTO
+      description: Request time off and track your status
+      icon: Calendar
+      path: /hub/pto
+      kind: link
+      weight: 20
+      showWhen: authenticated

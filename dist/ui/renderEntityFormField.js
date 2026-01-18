@@ -1,12 +1,22 @@
 'use client';
-import { jsx as _jsx } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import React from 'react';
-export function renderEntityFormField({ keyName, fieldSpec, value, setValue, error, required, ui, optionSources, referenceRenderers, }) {
+import { Avatar } from '@hit/ui-kit';
+import { ProfilePhotoUploader } from './ProfilePhotoUploader';
+export function renderEntityFormField({ keyName, fieldSpec, value, setValue, entityId, apiBaseUrl, error, required, ui, optionSources, referenceRenderers, }) {
     const spec = fieldSpec && typeof fieldSpec === 'object' ? fieldSpec : {};
     const type = String(spec.type || 'text').trim().toLowerCase();
     const label = String(spec.label || keyName);
     const placeholder = typeof spec.placeholder === 'string' ? String(spec.placeholder) : undefined;
     const readOnly = Boolean(spec.readOnly);
+    if (type === 'image') {
+        const widget = String(spec.widget || '').trim();
+        if (widget === 'profilePhoto') {
+            return (_jsx(ProfilePhotoUploader, { fieldSpec: spec, value: value, setValue: setValue, entityId: entityId, apiBaseUrl: apiBaseUrl }, keyName));
+        }
+        const src = typeof value === 'string' ? value.trim() : '';
+        return (_jsxs("div", { className: "space-y-2", children: [_jsx("div", { className: "text-sm text-gray-400", children: label }), _jsx(Avatar, { name: label, src: src || undefined, size: "lg" })] }, keyName));
+    }
     if (type === 'select') {
         const src = typeof spec.optionSource === 'string' ? String(spec.optionSource) : '';
         const cfg = src && optionSources[src] ? optionSources[src] : undefined;

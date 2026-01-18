@@ -1,7 +1,7 @@
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
 
-import { employees } from '@/lib/feature-pack-schemas';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 
 function toTitle(word: string): string {
   const w = String(word || '').trim();
@@ -117,7 +117,7 @@ export async function syncEmployeesWithAuthUsers(params: {
   db: any;
   users: AuthDirectoryUser[];
   allowDeactivation?: boolean;
-}): Promise<{ ensured: number; reactivated: number; deactivated: number }> {
+}): Promise<{ ensured: number; reactivated: number; deactivated: number; deleted: number }> {
   const normalized = (params.users || [])
     .map((u) => {
       const email = String(u?.email || '').trim().toLowerCase();
@@ -150,6 +150,7 @@ export async function syncEmployeesWithAuthUsers(params: {
   }
 
   let deactivated = 0;
+  let deleted = 0;
   if (inactiveEmails.length > 0) {
     const updated = await params.db
       .update(employees)
@@ -160,14 +161,31 @@ export async function syncEmployeesWithAuthUsers(params: {
   }
 
   if (params.allowDeactivation && allEmails.length > 0) {
-    const updated = await params.db
-      .update(employees)
-      .set({ isActive: false })
-      .where(and(notInArray(employees.userEmail, allEmails), eq(employees.isActive, true)))
-      .returning({ userEmail: employees.userEmail });
-    deactivated += Array.isArray(updated) ? updated.length : 0;
+    const toDelete = await params.db
+      .select({ userEmail: employees.userEmail })
+      .from(employees)
+      .where(notInArray(employees.userEmail, allEmails));
+    const deleteEmails = Array.from(
+      new Set(
+        (toDelete || [])
+          .map((r: any) => String(r?.userEmail || '').trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (deleteEmails.length > 0) {
+      await params.db
+        .delete(userOrgAssignments)
+        .where(inArray(userOrgAssignments.userKey, deleteEmails as string[]));
+
+      const deletedRows = await params.db
+        .delete(employees)
+        .where(inArray(employees.userEmail, deleteEmails as string[]))
+        .returning({ userEmail: employees.userEmail });
+      deleted = Array.isArray(deletedRows) ? deletedRows.length : 0;
+    }
   }
 
-  return { ensured, reactivated, deactivated };
+  return { ensured, reactivated, deactivated, deleted };
 }
 

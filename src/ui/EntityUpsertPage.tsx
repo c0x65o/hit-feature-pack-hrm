@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useUi } from '@hit/ui-kit';
+import { useUi, useFormSubmit } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataSource } from './entityDataSources';
 import { renderEntityFormField } from './renderEntityFormField';
@@ -83,9 +83,10 @@ export function EntityUpsertPage({
   const ds = useEntityDataSource(entityKey);
   const { Page, Card, Button, Spinner, Alert, Input, Select, Autocomplete, TextArea, Checkbox } = useUi();
 
+  // Use the form submit hook for proper error handling and logging
+  const { submitting, error, submit, clearError, setError } = useFormSubmit();
+
   const [values, setValues] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [orgAssignment, setOrgAssignment] = useState<OrgAssignmentState | null>(null);
   const [orgAssignmentDirty, setOrgAssignmentDirty] = useState(false);
   const [orgAssignmentLoading, setOrgAssignmentLoading] = useState(false);
@@ -118,6 +119,7 @@ export function EntityUpsertPage({
   const meta: any = (uiSpec as any)?.meta || {};
   const routes = meta?.routes || {};
   const actionsMeta: any = meta?.actions || {};
+  const apiBaseUrl = String((uiSpec as any)?.api?.baseUrl || '');
   const titleSingular = String(meta.titleSingular || entityKey);
 
   const formCfg = asRecord((uiSpec as any)?.form) || {};
@@ -268,19 +270,20 @@ export function EntityUpsertPage({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    clearError();
     const isCreate = !recordId;
     if (isCreate && !upsert?.create) {
       setError('Create is not supported for this entity.');
       return;
     }
-    try {
-      setSaving(true);
+
+    const result = await submit(async () => {
       // Build payload from scalar keys only.
       const payload: Record<string, any> = {};
       for (const k of scalarKeys) {
         const fs = asRecord(fieldsMap?.[k]) || {};
         if (fs.virtual) continue;
+        if (String(fs.widget || '').trim() === 'profilePhoto') continue;
         const raw = (values?.[k] ?? '').toString();
         const t = String(fs.type || 'text').trim().toLowerCase();
         const v = raw.trim();
@@ -302,12 +305,7 @@ export function EntityUpsertPage({
       if (isCreate) {
         const created = await upsert.create?.(payload);
         const createdId = String(created?.id || created?.record?.id || '');
-        if (createdId) {
-          navigate(detailHrefForId(createdId));
-        } else {
-          navigate(String(routes.list || '/'));
-        }
-        return;
+        return { navigateTo: createdId ? detailHrefForId(createdId) : String(routes.list || '/') };
       }
 
       await upsert.update(recordId, payload);
@@ -324,10 +322,7 @@ export function EntityUpsertPage({
             credentials: 'include',
             body: JSON.stringify(assignmentPayload),
           });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(json?.error || json?.detail || 'Failed to update org scope');
-          }
+          if (!res.ok) throw res;
         } else if (assignmentPayload.divisionId || assignmentPayload.departmentId || assignmentPayload.locationId) {
           const res = await fetch('/api/org/assignments', {
             method: 'POST',
@@ -335,10 +330,8 @@ export function EntityUpsertPage({
             credentials: 'include',
             body: JSON.stringify({ userKey: userEmail, ...assignmentPayload }),
           });
+          if (!res.ok) throw res;
           const json = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(json?.error || json?.detail || 'Failed to create org scope');
-          }
           setOrgAssignment((prev) => {
             if (!prev) return prev;
             const newId = json?.id ? String(json.id) : null;
@@ -347,11 +340,12 @@ export function EntityUpsertPage({
         }
         setOrgAssignmentDirty(false);
       }
-      navigate(detailHrefForId(recordId));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to save');
-    } finally {
-      setSaving(false);
+      return { navigateTo: detailHrefForId(recordId) };
+    });
+
+    // Navigate on success
+    if ((result as any)?.navigateTo) {
+      navigate((result as any).navigateTo);
     }
   };
 
@@ -361,11 +355,22 @@ export function EntityUpsertPage({
 
   const onCancel = () => navigate(recordId ? detailHrefForId(recordId) : String(routes.list || '/'));
 
+  // Compute error title based on status code
+  const errorTitle = error?.status === 403 ? 'Permission denied' : error?.status === 404 ? 'Not found' : 'Could not save';
+
   return (
     <Page title={pageTitle} onNavigate={navigate}>
       {error ? (
-        <Alert variant="error" title="Error">
-          {error}
+        <Alert variant="error" title={errorTitle} onClose={clearError}>
+          <p>{error.message}</p>
+          {(error as any)?.detail && (
+            <p className="text-sm mt-2 opacity-80">{(error as any).detail}</p>
+          )}
+          {(error as any)?.requiredPermission && (
+            <p className="text-xs mt-2 opacity-60">
+              Required: {(error as any).requiredPermission}
+            </p>
+          )}
         </Alert>
       ) : null}
       <Card>
@@ -424,7 +429,7 @@ export function EntityUpsertPage({
                           setOrgAssignmentDirty(true);
                         }}
                         options={divisionOptions}
-                        disabled={saving || orgOptionsLoading}
+                        disabled={submitting || orgOptionsLoading}
                       />
                       <Select
                         label="Department"
@@ -434,7 +439,7 @@ export function EntityUpsertPage({
                           setOrgAssignmentDirty(true);
                         }}
                         options={departmentOptions}
-                        disabled={saving || orgOptionsLoading}
+                        disabled={submitting || orgOptionsLoading}
                       />
                       <Select
                         label="Location"
@@ -444,7 +449,7 @@ export function EntityUpsertPage({
                           setOrgAssignmentDirty(true);
                         }}
                         options={locationOptions}
-                        disabled={saving || orgOptionsLoading}
+                        disabled={submitting || orgOptionsLoading}
                       />
                     </div>
                   ) : null}
@@ -468,6 +473,8 @@ export function EntityUpsertPage({
                       fieldSpec: fieldsMap?.[k] || {},
                       value: typeof values?.[k] === 'string' ? values[k] : '',
                       setValue: (v) => setValues((prev) => ({ ...(prev || {}), [k]: v })),
+                      entityId: recordId,
+                      apiBaseUrl,
                       error: undefined,
                       required: isRequired(k),
                       ui: { Input, Select, Autocomplete, TextArea, Checkbox },
@@ -481,11 +488,11 @@ export function EntityUpsertPage({
           })}
 
           <div className="flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-800">
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
+            <Button type="button" variant="secondary" onClick={onCancel} disabled={submitting}>
               {cancelLabel}
             </Button>
-            <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? 'Saving…' : saveUpdateLabel}
+            <Button type="submit" variant="primary" disabled={submitting}>
+              {submitting ? 'Saving…' : saveUpdateLabel}
             </Button>
           </div>
         </form>

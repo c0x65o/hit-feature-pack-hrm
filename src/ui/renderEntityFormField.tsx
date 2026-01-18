@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { Avatar } from '@hit/ui-kit';
+import { ProfilePhotoUploader } from './ProfilePhotoUploader';
 
 export type OptionSourceConfig = {
   options: any[];
@@ -13,6 +15,8 @@ export type RenderEntityFormFieldArgs = {
   fieldSpec: any;
   value: string;
   setValue: (v: string) => void;
+  entityId?: string;
+  apiBaseUrl?: string;
   error?: any;
   required?: boolean;
   ui: {
@@ -42,6 +46,8 @@ export function renderEntityFormField({
   fieldSpec,
   value,
   setValue,
+  entityId,
+  apiBaseUrl,
   error,
   required,
   ui,
@@ -53,6 +59,28 @@ export function renderEntityFormField({
   const label = String(spec.label || keyName);
   const placeholder = typeof spec.placeholder === 'string' ? String(spec.placeholder) : undefined;
   const readOnly = Boolean(spec.readOnly);
+  if (type === 'image') {
+    const widget = String(spec.widget || '').trim();
+    if (widget === 'profilePhoto') {
+      return (
+        <ProfilePhotoUploader
+          key={keyName}
+          fieldSpec={spec}
+          value={value}
+          setValue={setValue}
+          entityId={entityId}
+          apiBaseUrl={apiBaseUrl}
+        />
+      );
+    }
+    const src = typeof value === 'string' ? value.trim() : '';
+    return (
+      <div key={keyName} className="space-y-2">
+        <div className="text-sm text-gray-400">{label}</div>
+        <Avatar name={label} src={src || undefined} size="lg" />
+      </div>
+    );
+  }
 
   if (type === 'select') {
     const src = typeof spec.optionSource === 'string' ? String(spec.optionSource) : '';

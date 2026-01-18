@@ -16,7 +16,13 @@ tableViews:
           operator: equals
           value: true
           valueType: boolean
+      columns:
+        - profilePictureUrl
+        - name
+        - userEmail
+        - positionName
       mobileColumns:
+        - profilePictureUrl
         - name
         - userEmail
         - phone

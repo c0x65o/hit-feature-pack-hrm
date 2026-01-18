@@ -62,6 +62,34 @@ const handlers: Record<string, EntityActionHandler | undefined> = {
       refresh: true,
     };
   },
+  'hrm.employees.deactivate': async ({ record }) => {
+    const id = record?.id;
+    if (!id) throw new Error('Missing employee ID');
+    await hrmFetch(`/employees/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive: false }),
+    });
+    return {
+      title: 'Employee Deactivated',
+      message: 'The employee has been marked as inactive.',
+      variant: 'success',
+      refresh: true,
+    };
+  },
+  'hrm.employees.activate': async ({ record }) => {
+    const id = record?.id;
+    if (!id) throw new Error('Missing employee ID');
+    await hrmFetch(`/employees/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isActive: true }),
+    });
+    return {
+      title: 'Employee Activated',
+      message: 'The employee has been marked as active.',
+      variant: 'success',
+      refresh: true,
+    };
+  },
 };
 
 export function getEntityActionHandler(handlerId: string): EntityActionHandler | undefined {

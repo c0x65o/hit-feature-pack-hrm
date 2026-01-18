@@ -24,6 +24,7 @@ export declare function syncEmployeesWithAuthUsers(params: {
     ensured: number;
     reactivated: number;
     deactivated: number;
+    deleted: number;
 }>;
 export {};
 //# sourceMappingURL=employee-provisioning.d.ts.map

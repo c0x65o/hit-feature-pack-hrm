@@ -5,13 +5,10 @@ import { getDb } from '@/lib/db';
 import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
+import { forbiddenError, jsonError } from '../lib/api-errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
-}
 
 function getIdFromPath(request: NextRequest): string {
   const url = new URL(request.url);
@@ -111,7 +108,12 @@ export async function GET(request: NextRequest) {
 
   const canAccess = await canAccessEmployee(db, request, email, 'write');
   if (!canAccess) {
-    return jsonError('Forbidden', 403);
+    return forbiddenError({
+      message: 'Permission denied',
+      detail: 'You can only edit org scope for your own employee record. To edit other employees, contact an admin to grant HRM write scope.',
+      code: 'HRM_ORG_SCOPE_WRITE_DENIED',
+      requiredPermission: 'hrm.employees.write.scope.ldd or hrm.employees.write.scope.all',
+    });
   }
 
   const assignments = await db
@@ -150,7 +152,12 @@ export async function PUT(request: NextRequest) {
 
   const canAccess = await canAccessEmployee(db, request, email, 'write');
   if (!canAccess) {
-    return jsonError('Forbidden', 403);
+    return forbiddenError({
+      message: 'Permission denied',
+      detail: 'You can only update org scope for your own employee record. To update other employees, contact an admin to grant HRM write scope.',
+      code: 'HRM_ORG_SCOPE_WRITE_DENIED',
+      requiredPermission: 'hrm.employees.write.scope.ldd or hrm.employees.write.scope.all',
+    });
   }
 
   const body = (await request.json().catch(() => null)) as

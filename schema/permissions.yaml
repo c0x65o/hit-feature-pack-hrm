@@ -21,10 +21,6 @@ permissions:
       label: "HRM: Employee Edit"
       description: "Access HRM employee edit pages."
       default_enabled: false
-    - key: hrm.employees.create.access
-      label: "HRM: Employee Create"
-      description: "Access HRM employee creation page."
-      default_enabled: false
     - key: hrm.employees.photo.self
       label: "HRM: Update Own Photo"
       description: "Allow a user to upload/update their own employee profile photo."
@@ -152,10 +148,6 @@ permissions:
       description: "Edit employees in your division."
       default_enabled: false
 
-    - key: hrm.employees.create
-      label: Create Employee
-      description: "Create a new employee (employees are auto-provisioned, but this action controls access to creation flows)."
-      default_enabled: false
     - key: hrm.employees.sync
       label: "HRM: Sync Employees"
       description: "Manually sync HRM employees with auth users."
@@ -181,7 +173,7 @@ permissions:
     - key: hrm.positions.create
       label: "HRM: Create Position"
       description: "Create new positions (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
 
     # ─────────────────────────────────────────────────────────────────────────────
     # PTO / TIME OFF
@@ -197,11 +189,11 @@ permissions:
     - key: hrm.setup.leave-types.create
       label: "HRM Setup: Create Leave Type"
       description: "Create leave types (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.leaveTypes.create
       label: "HRM: Create Leave Type"
       description: "Create leave types (required by require_create for hrm.leaveType)."
-      default_enabled: true
+      default_enabled: false
 
     - key: hrm.setup.holidays.access
       label: "HRM Setup: Holidays"
@@ -214,11 +206,11 @@ permissions:
     - key: hrm.setup.holidays.create
       label: "HRM Setup: Create Holiday"
       description: "Create holidays (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.holidays.create
       label: "HRM: Create Holiday"
       description: "Create holidays (required by require_create for hrm.holiday)."
-      default_enabled: true
+      default_enabled: false
 
     - key: hrm.setup.pto-policies.access
       label: "HRM Setup: PTO Policies"
@@ -231,11 +223,11 @@ permissions:
     - key: hrm.setup.pto-policies.create
       label: "HRM Setup: Create PTO Policy"
       description: "Create PTO policies (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.ptoPolicies.create
       label: "HRM: Create PTO Policy"
       description: "Create PTO policies (required by require_create for hrm.ptoPolicy)."
-      default_enabled: true
+      default_enabled: false
 
     - key: hrm.setup.pto-assignments.access
       label: "HRM Setup: PTO Assignments"
@@ -248,11 +240,11 @@ permissions:
     - key: hrm.setup.pto-assignments.create
       label: "HRM Setup: Create PTO Assignment"
       description: "Create PTO assignments (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.ptoPolicyAssignments.create
       label: "HRM: Create PTO Assignment"
       description: "Create PTO assignments (required by require_create for hrm.ptoPolicyAssignment)."
-      default_enabled: true
+      default_enabled: false
 
     - key: hrm.pto.requests.access
       label: "HRM PTO: Requests"
@@ -265,15 +257,24 @@ permissions:
     - key: hrm.pto.requests.create
       label: "HRM PTO: Create Request"
       description: "Create PTO requests (required by require_create authz flag)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.ptoRequests.create
       label: "HRM: Create PTO Request"
       description: "Create PTO requests (required by require_create for hrm.ptoRequest)."
-      default_enabled: true
+      default_enabled: false
     - key: hrm.pto.requests.approve
       label: "HRM PTO: Approve Requests"
       description: "Approve or reject PTO requests."
       default_enabled: false
+
+    - key: hrm.pto.requests.self.access
+      label: "HRM PTO: My Requests"
+      description: "Access your own PTO requests."
+      default_enabled: true
+    - key: hrm.pto.requests.self.create
+      label: "HRM PTO: Submit Own Request"
+      description: "Create PTO requests for yourself."
+      default_enabled: true
 
     - key: hrm.pto.balances.access
       label: "HRM PTO: Balances"
@@ -291,4 +292,4 @@ permissions:
     - key: hrm.ptoLedgerEntries.create
       label: "HRM: Create PTO Ledger Entry"
       description: "Create PTO ledger entries (required by require_create for hrm.ptoLedgerEntry)."
-      default_enabled: true
+      default_enabled: false

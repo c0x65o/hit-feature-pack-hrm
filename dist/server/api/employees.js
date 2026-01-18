@@ -64,6 +64,7 @@ export async function GET(request) {
         ensured: null,
         reactivated: null,
         deactivated: null,
+        deleted: null,
         provisioningError: null,
         authUrl: null,
         authDirectoryPath: null,
@@ -191,7 +192,7 @@ export async function GET(request) {
         provisionMeta.allowDeactivation = allowDeactivation;
         provisionMeta.authProxyProxiedFrom = authProxyProxiedFrom;
         provisionMeta.authUserCount = Array.isArray(users) ? users.length : 0;
-        const { ensured, reactivated, deactivated } = await syncEmployeesWithAuthUsers({
+        const { ensured, reactivated, deactivated, deleted } = await syncEmployeesWithAuthUsers({
             db,
             users,
             allowDeactivation,
@@ -199,6 +200,7 @@ export async function GET(request) {
         provisionMeta.ensured = ensured;
         provisionMeta.reactivated = reactivated;
         provisionMeta.deactivated = deactivated;
+        provisionMeta.deleted = deleted;
     }
     catch (e) {
         provisionMeta.provisioningError = e?.message ? String(e.message) : 'Provisioning failed';
@@ -291,6 +293,7 @@ export async function GET(request) {
             .select({
             id: employees.id,
             userEmail: employees.userEmail,
+            profilePictureUrl: employees.profilePictureUrl,
             firstName: employees.firstName,
             lastName: employees.lastName,
             preferredName: employees.preferredName,

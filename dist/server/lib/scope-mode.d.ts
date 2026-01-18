@@ -9,6 +9,9 @@ export type ScopeEntity = 'employees';
  * - fallback:        own
  *
  * Precedence if multiple are granted: most restrictive wins.
+ *
+ * Legacy back-compat (deprecated):
+ * - Treat `.scope.all` as `.scope.any`.
  */
 export declare function resolveHrmScopeMode(request: NextRequest, args: {
     entity?: ScopeEntity;

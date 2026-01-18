@@ -99,7 +99,7 @@ export async function POST(request) {
         if (!hasCurrent)
             users.push({ email: currentEmail, isActive: true });
     }
-    const { ensured, reactivated, deactivated } = await syncEmployeesWithAuthUsers({
+    const { ensured, reactivated, deactivated, deleted } = await syncEmployeesWithAuthUsers({
         db,
         users,
         allowDeactivation,
@@ -109,6 +109,7 @@ export async function POST(request) {
         ensured,
         reactivated,
         deactivated,
+        deleted,
         authDirectorySource,
         authDirectoryPath,
         authDirectoryStatus,

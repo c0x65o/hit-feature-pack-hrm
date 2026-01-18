@@ -98,10 +98,13 @@ export function EntityListPage({
     filterMode: serverTable.query.filterMode,
     sortBy: serverTable.query.sortBy,
     sortOrder: serverTable.query.sortOrder,
+    tableId,
+    viewId: serverTable.query.viewId ?? null,
   });
 
   const items = data?.items || [];
   const pagination = data?.pagination;
+  const serverGroupMeta = data?.groupMeta;
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({});
 
   const columns = useEntityDataTableColumns({
@@ -232,6 +235,7 @@ export function EntityListPage({
           searchDebounceMs={400}
           tableId={tableId}
           uiStateKey={uiStateKey}
+          serverGroupMeta={serverGroupMeta || undefined}
           enableViews={true}
           showColumnVisibility={true}
           initialColumnVisibility={effectiveInitialColumnVisibility}

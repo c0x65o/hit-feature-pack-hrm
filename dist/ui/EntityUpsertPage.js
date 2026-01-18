@@ -1,7 +1,7 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
-import { useUi } from '@hit/ui-kit';
+import { useUi, useFormSubmit } from '@hit/ui-kit';
 import { useEntityUiSpec } from './useHitUiSpecs';
 import { useEntityDataSource } from './entityDataSources';
 import { renderEntityFormField } from './renderEntityFormField';
@@ -66,9 +66,9 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
     const uiSpec = useEntityUiSpec(entityKey);
     const ds = useEntityDataSource(entityKey);
     const { Page, Card, Button, Spinner, Alert, Input, Select, Autocomplete, TextArea, Checkbox } = useUi();
+    // Use the form submit hook for proper error handling and logging
+    const { submitting, error, submit, clearError, setError } = useFormSubmit();
     const [values, setValues] = useState({});
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState(null);
     const [orgAssignment, setOrgAssignment] = useState(null);
     const [orgAssignmentDirty, setOrgAssignmentDirty] = useState(false);
     const [orgAssignmentLoading, setOrgAssignmentLoading] = useState(false);
@@ -92,6 +92,7 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
     const meta = uiSpec?.meta || {};
     const routes = meta?.routes || {};
     const actionsMeta = meta?.actions || {};
+    const apiBaseUrl = String(uiSpec?.api?.baseUrl || '');
     const titleSingular = String(meta.titleSingular || entityKey);
     const formCfg = asRecord(uiSpec?.form) || {};
     const sections = Array.isArray(formCfg.sections) ? formCfg.sections : [];
@@ -238,19 +239,20 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
     };
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null);
+        clearError();
         const isCreate = !recordId;
         if (isCreate && !upsert?.create) {
             setError('Create is not supported for this entity.');
             return;
         }
-        try {
-            setSaving(true);
+        const result = await submit(async () => {
             // Build payload from scalar keys only.
             const payload = {};
             for (const k of scalarKeys) {
                 const fs = asRecord(fieldsMap?.[k]) || {};
                 if (fs.virtual)
+                    continue;
+                if (String(fs.widget || '').trim() === 'profilePhoto')
                     continue;
                 const raw = (values?.[k] ?? '').toString();
                 const t = String(fs.type || 'text').trim().toLowerCase();
@@ -273,13 +275,7 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
             if (isCreate) {
                 const created = await upsert.create?.(payload);
                 const createdId = String(created?.id || created?.record?.id || '');
-                if (createdId) {
-                    navigate(detailHrefForId(createdId));
-                }
-                else {
-                    navigate(String(routes.list || '/'));
-                }
-                return;
+                return { navigateTo: createdId ? detailHrefForId(createdId) : String(routes.list || '/') };
             }
             await upsert.update(recordId, payload);
             if (canEditOrgAssignment && orgAssignment && orgAssignmentDirty && userEmail) {
@@ -295,10 +291,8 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                         credentials: 'include',
                         body: JSON.stringify(assignmentPayload),
                     });
-                    const json = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(json?.error || json?.detail || 'Failed to update org scope');
-                    }
+                    if (!res.ok)
+                        throw res;
                 }
                 else if (assignmentPayload.divisionId || assignmentPayload.departmentId || assignmentPayload.locationId) {
                     const res = await fetch('/api/org/assignments', {
@@ -307,10 +301,9 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                         credentials: 'include',
                         body: JSON.stringify({ userKey: userEmail, ...assignmentPayload }),
                     });
+                    if (!res.ok)
+                        throw res;
                     const json = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        throw new Error(json?.error || json?.detail || 'Failed to create org scope');
-                    }
                     setOrgAssignment((prev) => {
                         if (!prev)
                             return prev;
@@ -320,20 +313,20 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                 }
                 setOrgAssignmentDirty(false);
             }
-            navigate(detailHrefForId(recordId));
-        }
-        catch (err) {
-            setError(err?.message || 'Failed to save');
-        }
-        finally {
-            setSaving(false);
+            return { navigateTo: detailHrefForId(recordId) };
+        });
+        // Navigate on success
+        if (result?.navigateTo) {
+            navigate(result.navigateTo);
         }
     };
     const pageTitle = recordId ? `Edit ${titleSingular}` : `New ${titleSingular}`;
     const cancelLabel = String(actionsMeta.cancelLabel || 'Cancel');
     const saveUpdateLabel = String(actionsMeta.saveUpdateLabel || `Save ${titleSingular}`);
     const onCancel = () => navigate(recordId ? detailHrefForId(recordId) : String(routes.list || '/'));
-    return (_jsxs(Page, { title: pageTitle, onNavigate: navigate, children: [error ? (_jsx(Alert, { variant: "error", title: "Error", children: error })) : null, _jsx(Card, { children: _jsxs("form", { onSubmit: handleSubmit, className: "space-y-6", children: [sections.map((sAny, idx) => {
+    // Compute error title based on status code
+    const errorTitle = error?.status === 403 ? 'Permission denied' : error?.status === 404 ? 'Not found' : 'Could not save';
+    return (_jsxs(Page, { title: pageTitle, onNavigate: navigate, children: [error ? (_jsxs(Alert, { variant: "error", title: errorTitle, onClose: clearError, children: [_jsx("p", { children: error.message }), error?.detail && (_jsx("p", { className: "text-sm mt-2 opacity-80", children: error.detail })), error?.requiredPermission && (_jsxs("p", { className: "text-xs mt-2 opacity-60", children: ["Required: ", error.requiredPermission] }))] })) : null, _jsx(Card, { children: _jsxs("form", { onSubmit: handleSubmit, className: "space-y-6", children: [sections.map((sAny, idx) => {
                             const s = asRecord(sAny) || {};
                             const title = s.title ? String(s.title) : '';
                             const layoutCols = Number(asRecord(s.layout)?.columns || 1);
@@ -359,13 +352,13 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                                 return (_jsxs("div", { className: idx === 0 ? '' : 'border-t pt-6 mt-6', style: idx === 0 ? undefined : { borderColor: 'var(--hit-border, #1f2937)' }, children: [title ? _jsx("h3", { className: "text-lg font-semibold mb-4", children: title }) : null, orgAssignmentError ? (_jsx(Alert, { variant: "error", title: "Org Scope", children: orgAssignmentError })) : null, orgAssignmentHasMultiple ? (_jsx(Alert, { variant: "warning", title: "Multiple assignments detected", children: "This editor updates the most recent assignment only." })) : null, orgAssignmentLoading || orgOptionsLoading ? (_jsx("div", { className: "py-4", children: _jsx(Spinner, {}) })) : orgAssignment ? (_jsxs("div", { className: gridClass, children: [_jsx(Select, { label: "Division", value: orgAssignment.divisionId, onChange: (v) => {
                                                         setOrgAssignment((prev) => (prev ? { ...prev, divisionId: String(v) } : prev));
                                                         setOrgAssignmentDirty(true);
-                                                    }, options: divisionOptions, disabled: saving || orgOptionsLoading }), _jsx(Select, { label: "Department", value: orgAssignment.departmentId, onChange: (v) => {
+                                                    }, options: divisionOptions, disabled: submitting || orgOptionsLoading }), _jsx(Select, { label: "Department", value: orgAssignment.departmentId, onChange: (v) => {
                                                         setOrgAssignment((prev) => (prev ? { ...prev, departmentId: String(v) } : prev));
                                                         setOrgAssignmentDirty(true);
-                                                    }, options: departmentOptions, disabled: saving || orgOptionsLoading }), _jsx(Select, { label: "Location", value: orgAssignment.locationId, onChange: (v) => {
+                                                    }, options: departmentOptions, disabled: submitting || orgOptionsLoading }), _jsx(Select, { label: "Location", value: orgAssignment.locationId, onChange: (v) => {
                                                         setOrgAssignment((prev) => (prev ? { ...prev, locationId: String(v) } : prev));
                                                         setOrgAssignmentDirty(true);
-                                                    }, options: locationOptions, disabled: saving || orgOptionsLoading })] })) : null] }, `sec-${idx}`));
+                                                    }, options: locationOptions, disabled: submitting || orgOptionsLoading })] })) : null] }, `sec-${idx}`));
                             }
                             if (fields.length === 0)
                                 return null;
@@ -375,11 +368,13 @@ export function EntityUpsertPage({ entityKey, id, onNavigate, }) {
                                             fieldSpec: fieldsMap?.[k] || {},
                                             value: typeof values?.[k] === 'string' ? values[k] : '',
                                             setValue: (v) => setValues((prev) => ({ ...(prev || {}), [k]: v })),
+                                            entityId: recordId,
+                                            apiBaseUrl,
                                             error: undefined,
                                             required: isRequired(k),
                                             ui: { Input, Select, Autocomplete, TextArea, Checkbox },
                                             optionSources: registries.optionSources || {},
                                             referenceRenderers: registries.referenceRenderers || {},
                                         })) })] }, `sec-${idx}`));
-                        }), _jsxs("div", { className: "flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-800", children: [_jsx(Button, { type: "button", variant: "secondary", onClick: onCancel, disabled: saving, children: cancelLabel }), _jsx(Button, { type: "submit", variant: "primary", disabled: saving, children: saving ? 'Saving…' : saveUpdateLabel })] })] }) })] }));
+                        }), _jsxs("div", { className: "flex items-center justify-end gap-3 pt-4 mt-4 border-t border-gray-800", children: [_jsx(Button, { type: "button", variant: "secondary", onClick: onCancel, disabled: submitting, children: cancelLabel }), _jsx(Button, { type: "submit", variant: "primary", disabled: submitting, children: submitting ? 'Saving…' : saveUpdateLabel })] })] }) })] }));
 }

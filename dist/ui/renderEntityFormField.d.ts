@@ -9,6 +9,8 @@ export type RenderEntityFormFieldArgs = {
     fieldSpec: any;
     value: string;
     setValue: (v: string) => void;
+    entityId?: string;
+    apiBaseUrl?: string;
     error?: any;
     required?: boolean;
     ui: {
@@ -30,5 +32,5 @@ export type RenderEntityFormFieldArgs = {
         };
     }) => React.ReactNode)>;
 };
-export declare function renderEntityFormField({ keyName, fieldSpec, value, setValue, error, required, ui, optionSources, referenceRenderers, }: RenderEntityFormFieldArgs): import("react/jsx-runtime").JSX.Element;
+export declare function renderEntityFormField({ keyName, fieldSpec, value, setValue, entityId, apiBaseUrl, error, required, ui, optionSources, referenceRenderers, }: RenderEntityFormFieldArgs): import("react/jsx-runtime").JSX.Element;
 //# sourceMappingURL=renderEntityFormField.d.ts.map

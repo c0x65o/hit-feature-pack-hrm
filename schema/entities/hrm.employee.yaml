@@ -19,6 +19,7 @@ entities:
         saveUpdateLabel: Save
         cancelLabel: Cancel
         allowCreate: false
+        allowDelete: false
       headerActions:
         - kind: action
           actionKey: hrm.employees.sync
@@ -40,10 +41,6 @@ entities:
         roles: []
         default_roles_allow: [admin]
         authz: { entity: employees, verb: read, require_action: hrm.employees.detail.access, show_pages: true }
-      new:
-        roles: []
-        default_roles_allow: [admin]
-        authz: { entity: employees, verb: write, require_action: hrm.employees.create.access, require_create: true, show_pages: true }
       edit:
         roles: []
         default_roles_allow: [admin]
@@ -58,7 +55,7 @@ entities:
 
     list:
       tableId: hrm.employees
-      uiStateVersion: 1
+      uiStateVersion: 2
       pageSize: 25
       initialSort:
         sortBy: name
@@ -79,6 +76,7 @@ entities:
         - createdAt
         - updatedAt
       initialColumnVisibility:
+        profilePictureUrl: true
         name: true
         firstName: false
         lastName: false
@@ -88,9 +86,20 @@ entities:
         state: false
         country: false
         isActive: false
+        # LDD columns - hidden by default, can be enabled via Columns menu
+        divisionName: false
+        departmentName: false
+        locationName: false
         createdAt: false
         updatedAt: false
       columns:
+        - key: profilePictureUrl
+          label: Photo
+          sortable: false
+          hideable: true
+          align: center
+          width: 64px
+          platforms: [web]
         - name
         - userEmail
         - preferredName
@@ -104,11 +113,18 @@ entities:
         - city
         - state
         - country
+        - divisionName
+        - departmentName
+        - locationName
         - createdAt
         - updatedAt
 
     form:
       sections:
+        - id: photo
+          title: Photo
+          layout: { columns: 1 }
+          fields: [profilePictureUrl]
         - id: basics
           title: Basics
           layout: { columns: 2 }
@@ -128,6 +144,13 @@ entities:
       # Use firstName/lastName for persistence.
       name: { type: text, label: Name, virtual: true }
       userEmail: { type: email, label: User Email, readOnly: true }
+      profilePictureUrl:
+        type: image
+        label: Photo
+        widget: profilePhoto
+        widgetConfig:
+          allowDelete: true
+          maxSizeMB: 5
       firstName: { type: text, label: First Name, required: true }
       lastName: { type: text, label: Last Name, required: true }
       preferredName: { type: text, label: Preferred Name }
@@ -181,6 +204,7 @@ entities:
     detail:
       summaryTitle: Details
       summaryFields:
+        - profilePictureUrl
         - userEmail
         - preferredName
         - firstName
@@ -218,7 +242,7 @@ entities:
                       field: id
             - id: chart
               label: Org Chart
-              platforms: [web]
+              platforms: [web, mobile]
               content:
                 kind: orgChart
                 endpoint: /api/hrm/employees/{id}/direct-reports

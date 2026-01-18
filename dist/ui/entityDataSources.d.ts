@@ -1,6 +1,8 @@
 export type ListQueryArgs = {
     page: number;
     pageSize: number;
+    tableId?: string;
+    viewId?: string | null;
     search?: string;
     filters?: any[];
     filterMode?: 'all' | 'any';
@@ -17,6 +19,7 @@ export type EntityDetailResult = {
     record: any;
     loading: boolean;
     deleteItem?: (id: string) => Promise<any>;
+    refetch?: () => Promise<any> | void;
 };
 export type EntityUpsertResult = {
     record: any;

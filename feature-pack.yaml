@@ -102,6 +102,15 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-picker"
       description: "Lightweight employee picker for autocomplete. Requires hrm.employees.picker permission."
 
+    - path: /api/hrm/pto-requests-self
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-hrm/server/api/pto-requests-self"
+      description: "Self-service PTO requests for the current employee."
+    - path: /api/hrm/pto-requests-self/[id]
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-hrm/server/api/pto-requests-self-id"
+      description: "Self-service PTO request detail (current employee only)."
+
 # Routes (schema-driven UI pages)
 routes:
   # Organization Chart (list widget)
@@ -144,6 +153,16 @@ routes:
   - path: /hrm/pto/requests/[id]/edit
     page: EntityEdit
     params: { entityKey: hrm.ptoRequest }
+  # My PTO Requests (self-service)
+  - path: /hub/pto
+    page: EntityList
+    params: { entityKey: hrm.ptoRequestSelf }
+  - path: /hub/pto/new
+    page: EntityEdit
+    params: { entityKey: hrm.ptoRequestSelf }
+  - path: /hub/pto/[id]
+    page: EntityDetail
+    params: { entityKey: hrm.ptoRequestSelf }
   # PTO Setup: Leave Types
   - path: /hrm/pto/leave-types
     page: EntityList
@@ -261,17 +280,17 @@ nav:
                 icon: Tag
                 weight: 10
                 showWhen: authenticated
-          - id: hrm-pto-holidays
-            label: Holidays
-            path: /hrm/pto/holidays
-            icon: CalendarDays
-            weight: 15
-            showWhen: authenticated
+              - id: hrm-pto-holidays
+                label: Holidays
+                path: /hrm/pto/holidays
+                icon: CalendarDays
+                weight: 15
+                showWhen: authenticated
               - id: hrm-pto-policies
                 label: PTO Policies
                 path: /hrm/pto/policies
                 icon: ClipboardList
-            weight: 20
+                weight: 20
                 showWhen: authenticated
               - id: hrm-pto-assignments
                 label: PTO Assignments

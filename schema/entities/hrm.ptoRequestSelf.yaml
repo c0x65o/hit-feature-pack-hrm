@@ -1,0 +1,148 @@
+version: 1
+
+entities:
+  hrm.ptoRequestSelf:
+    meta:
+      titleSingular: My PTO Request
+      titlePlural: My PTO Requests
+      descriptionPlural: Your PTO requests
+      routes:
+        root: /hub
+        list: /hub/pto
+        new: /hub/pto/new
+        detail: /hub/pto/{id}
+      breadcrumbs:
+        - { label: My Hub, href: /hub }
+        - { label: PTO, href: /hub/pto }
+      actions:
+        createLabel: Request PTO
+        editLabel: View PTO Request
+        saveCreateLabel: Submit Request
+        saveUpdateLabel: Save
+        cancelLabel: Cancel
+        allowEdit: false
+        allowDelete: false
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [user]
+        authz: { entity: ptoRequests, verb: read, require_action: hrm.pto.requests.self.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [user]
+        authz: { entity: ptoRequests, verb: read, require_action: hrm.pto.requests.self.access, show_pages: true }
+      new:
+        roles: []
+        default_roles_allow: [user]
+        authz: { entity: ptoRequests, verb: write, require_action: hrm.pto.requests.self.create, show_pages: true }
+
+    api:
+      resource: pto-requests-self
+
+    storage:
+      drizzleTable: ptoRequests
+
+    list:
+      tableId: hrm.ptoRequests.self
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: createdAt, sortOrder: desc }
+      sortWhitelist: [leaveTypeName, status, startDate, endDate, createdAt]
+      initialColumnVisibility:
+        leaveTypeName: true
+        status: true
+        startDate: true
+        endDate: true
+        amount: true
+        unit: true
+        submittedAt: false
+        createdAt: false
+      columns:
+        - leaveTypeName
+        - status
+        - startDate
+        - endDate
+        - amount
+        - unit
+        - submittedAt
+        - createdAt
+
+    form:
+      sections:
+        - id: basics
+          title: Request Details
+          layout: { columns: 2 }
+          fields: [leaveTypeId, policyId, startDate, endDate, amount, unit]
+        - id: notes
+          title: Notes
+          layout: { columns: 1 }
+          fields: [reason]
+
+    fields:
+      id: { type: text, label: ID }
+      employeeId: { type: text, label: Employee ID, readOnly: true }
+      leaveTypeId:
+        type: select
+        label: Leave Type
+        optionSource: hrm.leaveTypes
+        labelFromRow: leaveTypeName
+        required: true
+      leaveTypeName: { type: text, label: Leave Type, virtual: true }
+      policyId:
+        type: select
+        label: PTO Policy
+        optionSource: hrm.ptoPolicies
+        labelFromRow: policyName
+      policyName: { type: text, label: Policy, virtual: true }
+      status:
+        type: select
+        label: Status
+        readOnly: true
+        options:
+          - { value: draft, label: Draft }
+          - { value: submitted, label: Submitted }
+          - { value: approved, label: Approved }
+          - { value: rejected, label: Rejected }
+          - { value: cancelled, label: Cancelled }
+      startDate: { type: date, label: Start Date, required: true }
+      endDate: { type: date, label: End Date, required: true }
+      amount: { type: number, label: Amount }
+      unit:
+        type: select
+        label: Unit
+        options:
+          - { value: days, label: Days }
+          - { value: hours, label: Hours }
+      reason: { type: textarea, label: Reason }
+      requestedByUserKey: { type: text, label: Requested By, readOnly: true }
+      submittedAt: { type: datetime, label: Submitted At, readOnly: true }
+      approvedAt: { type: datetime, label: Approved At, readOnly: true }
+      approvedByUserKey: { type: text, label: Approved By, readOnly: true }
+      deniedAt: { type: datetime, label: Denied At, readOnly: true }
+      deniedByUserKey: { type: text, label: Denied By, readOnly: true }
+      decisionNote: { type: textarea, label: Decision Note, readOnly: true }
+      workflowRunId: { type: text, label: Workflow Run ID, readOnly: true }
+      createdAt: { type: datetime, label: Created }
+      updatedAt: { type: datetime, label: Updated }
+
+    detail:
+      summaryTitle: My PTO Request
+      summaryFields:
+        - leaveTypeName
+        - policyName
+        - status
+        - startDate
+        - endDate
+        - amount
+        - unit
+        - reason
+        - submittedAt
+        - approvedAt
+        - approvedByUserKey
+        - deniedAt
+        - deniedByUserKey
+        - decisionNote
+        - workflowRunId
+        - createdAt
+        - updatedAt

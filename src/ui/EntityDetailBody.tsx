@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { OrgChart, useUi, useEntityResolver } from '@hit/ui-kit';
+import { Avatar, OrgChart, useEntityResolver, useUi } from '@hit/ui-kit';
 import { splitLinkedEntityTabsExtra, wrapWithLinkedEntityTabsIfConfigured } from '@hit/feature-pack-form-core';
 import { EmbeddedEntityTable, type EmbeddedTableSpec } from './EmbeddedEntityTable';
 import { getHitPlatform } from './platformVisibility';
@@ -62,6 +62,25 @@ function DetailField({ uiSpec, record, fieldKey }: { uiSpec: any; record: any; f
   const type = String(spec.type || 'text');
   const label = String(spec.label || fieldKey);
   const raw = (record as any)?.[fieldKey];
+
+  if (type === 'image') {
+    const name = String(
+      (record as any)?.preferredName ||
+        (record as any)?.name ||
+        (record as any)?.displayName ||
+        `${(record as any)?.firstName || ''} ${(record as any)?.lastName || ''}`
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+    const src = raw == null ? '' : String(raw).trim();
+    if (!src && !name) return null;
+    return (
+      <div key={fieldKey}>
+        <div className="text-sm text-gray-400 mb-2">{label}</div>
+        <Avatar name={name || label} src={src || undefined} size="lg" />
+      </div>
+    );
+  }
 
   if (type === 'reference') {
     const ref = asRecord(spec.reference) || {};

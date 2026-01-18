@@ -1,5 +1,5 @@
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
-import { employees } from '@/lib/feature-pack-schemas';
+import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
 function toTitle(word) {
     const w = String(word || '').trim();
     if (!w)
@@ -115,6 +115,7 @@ export async function syncEmployeesWithAuthUsers(params) {
         reactivated = Array.isArray(updated) ? updated.length : 0;
     }
     let deactivated = 0;
+    let deleted = 0;
     if (inactiveEmails.length > 0) {
         const updated = await params.db
             .update(employees)
@@ -124,12 +125,23 @@ export async function syncEmployeesWithAuthUsers(params) {
         deactivated += Array.isArray(updated) ? updated.length : 0;
     }
     if (params.allowDeactivation && allEmails.length > 0) {
-        const updated = await params.db
-            .update(employees)
-            .set({ isActive: false })
-            .where(and(notInArray(employees.userEmail, allEmails), eq(employees.isActive, true)))
-            .returning({ userEmail: employees.userEmail });
-        deactivated += Array.isArray(updated) ? updated.length : 0;
+        const toDelete = await params.db
+            .select({ userEmail: employees.userEmail })
+            .from(employees)
+            .where(notInArray(employees.userEmail, allEmails));
+        const deleteEmails = Array.from(new Set((toDelete || [])
+            .map((r) => String(r?.userEmail || '').trim().toLowerCase())
+            .filter(Boolean)));
+        if (deleteEmails.length > 0) {
+            await params.db
+                .delete(userOrgAssignments)
+                .where(inArray(userOrgAssignments.userKey, deleteEmails));
+            const deletedRows = await params.db
+                .delete(employees)
+                .where(inArray(employees.userEmail, deleteEmails))
+                .returning({ userEmail: employees.userEmail });
+            deleted = Array.isArray(deletedRows) ? deletedRows.length : 0;
+        }
     }
-    return { ensured, reactivated, deactivated };
+    return { ensured, reactivated, deactivated, deleted };
 }

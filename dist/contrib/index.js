@@ -34,6 +34,18 @@ export const contrib = {
                 throw new Error('Missing HRM handler: hrm.employees.sync');
             await handler({ entityKey, record, uiSpec, navigate });
         },
+        'hrm.employees.deactivate': async ({ entityKey, record, uiSpec, navigate }) => {
+            const handler = getEntityActionHandler('hrm.employees.deactivate');
+            if (!handler)
+                throw new Error('Missing HRM handler: hrm.employees.deactivate');
+            await handler({ entityKey, record, uiSpec, navigate });
+        },
+        'hrm.employees.activate': async ({ entityKey, record, uiSpec, navigate }) => {
+            const handler = getEntityActionHandler('hrm.employees.activate');
+            if (!handler)
+                throw new Error('Missing HRM handler: hrm.employees.activate');
+            await handler({ entityKey, record, uiSpec, navigate });
+        },
     },
 };
 export default contrib;

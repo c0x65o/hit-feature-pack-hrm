@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getStoredToken } from './authToken';
 
 export type ListQueryArgs = {
   page: number;
   pageSize: number;
+  tableId?: string;
+  viewId?: string | null;
   search?: string;
   filters?: any[];
   filterMode?: 'all' | 'any';
@@ -24,6 +26,7 @@ export type EntityDetailResult = {
   record: any;
   loading: boolean;
   deleteItem?: (id: string) => Promise<any>;
+  refetch?: () => Promise<any> | void;
 };
 
 export type EntityUpsertResult = {
@@ -59,6 +62,52 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+async function fetchTableDataQuery(args: ListQueryArgs) {
+  const tableId = String(args.tableId || '').trim();
+  if (!tableId) {
+    throw new Error('Missing tableId');
+  }
+  const body: Record<string, unknown> = {
+    tableId,
+    page: args.page,
+    pageSize: args.pageSize,
+  };
+  const viewId = typeof args.viewId === 'string' ? args.viewId.trim() : '';
+  if (viewId) body.viewId = viewId;
+  if (args.search) body.search = String(args.search);
+  if (args.sortBy) body.sortBy = String(args.sortBy);
+  if (args.sortOrder) body.sortOrder = String(args.sortOrder);
+  if (Array.isArray(args.filters) && args.filters.length > 0) body.filters = args.filters;
+  if (args.filterMode) body.filterMode = args.filterMode;
+  body.groupPageSize = 10000;
+
+  const res = await fetch('/api/table-data/query', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load data');
+
+  const items = Array.isArray(json?.items)
+    ? json.items
+    : Array.isArray(json?.data?.items)
+      ? json.data.items
+      : [];
+  const pagination = json?.pagination || json?.data?.pagination || null;
+  const groupMeta =
+    json?.groupCounts || json?.groupOrder || json?.groups
+      ? {
+          order: Array.isArray(json?.groupOrder) ? json.groupOrder : [],
+          counts: json?.groupCounts && typeof json.groupCounts === 'object' ? json.groupCounts : {},
+          groups: Array.isArray(json?.groups) ? json.groups : [],
+        }
+      : null;
+
+  return { ...json, items, pagination, groupMeta };
+}
+
 function extractItems(json: any): any[] {
   if (Array.isArray(json)) return json;
   if (Array.isArray(json?.items)) return json.items;
@@ -84,10 +133,18 @@ function buildOptions(args: {
 function useSchemaCrudList(basePath: string, resource: string, args: ListQueryArgs) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const loadTokenRef = useRef(0);
 
   const fetchData = useCallback(async () => {
+    const token = ++loadTokenRef.current;
     setLoading(true);
     try {
+      if (args.tableId) {
+        const json = await fetchTableDataQuery(args);
+        if (token !== loadTokenRef.current) return;
+        setData(json);
+        return;
+      }
       const qp = new URLSearchParams();
       qp.set('page', String(args.page || 1));
       qp.set('pageSize', String(args.pageSize || 25));
@@ -97,11 +154,14 @@ function useSchemaCrudList(basePath: string, resource: string, args: ListQueryAr
       const res = await fetch(`${basePath}/${resource}?${qp.toString()}`, { headers: authHeaders(), credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load data');
+      if (token !== loadTokenRef.current) return;
       setData(json);
     } finally {
-      setLoading(false);
+      if (token === loadTokenRef.current) {
+        setLoading(false);
+      }
     }
-  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder, basePath, resource]);
+  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder, args.tableId, args.viewId, args.filters, args.filterMode, basePath, resource]);
 
   useEffect(() => {
     void fetchData();
@@ -158,8 +218,9 @@ function useSchemaCrudUpsert(basePath: string, resource: string, id?: string) {
         credentials: 'include',
         body: JSON.stringify(payload || {}),
       });
+      // Throw the Response object so useFormSubmit can parse structured errors
+      if (!res.ok) throw res;
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to create');
       return json;
     },
     update: async (rid: string, payload: any) => {
@@ -169,8 +230,9 @@ function useSchemaCrudUpsert(basePath: string, resource: string, id?: string) {
         credentials: 'include',
         body: JSON.stringify(payload || {}),
       });
+      // Throw the Response object so useFormSubmit can parse structured errors
+      if (!res.ok) throw res;
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to update');
       await detail.refetch();
       return json;
     },
@@ -284,10 +346,18 @@ function useOptionSource(args: {
 function useHrmEmployeesList(args: ListQueryArgs) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const loadTokenRef = useRef(0);
 
   const fetchData = useCallback(async () => {
+    const token = ++loadTokenRef.current;
     setLoading(true);
     try {
+      if (args.tableId) {
+        const json = await fetchTableDataQuery(args);
+        if (token !== loadTokenRef.current) return;
+        setData(json);
+        return;
+      }
       const qp = new URLSearchParams();
       qp.set('page', String(args.page || 1));
       qp.set('pageSize', String(args.pageSize || 25));
@@ -297,11 +367,14 @@ function useHrmEmployeesList(args: ListQueryArgs) {
       const res = await fetch(`/api/hrm/employees?${qp.toString()}`, { headers: authHeaders(), credentials: 'include' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to load employees');
+      if (token !== loadTokenRef.current) return;
       setData(json);
     } finally {
-      setLoading(false);
+      if (token === loadTokenRef.current) {
+        setLoading(false);
+      }
     }
-  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder]);
+  }, [args.page, args.pageSize, args.search, args.sortBy, args.sortOrder, args.tableId, args.viewId, args.filters, args.filterMode]);
 
   useEffect(() => {
     void fetchData();
@@ -456,8 +529,9 @@ export function useEntityDataSource(entityKey: string): EntityDataSource | null 
               credentials: 'include',
               body: JSON.stringify(payload || {}),
             });
+            // Throw the Response object so useFormSubmit can parse structured errors
+            if (!res.ok) throw res;
             const json = await res.json().catch(() => ({}));
-            if (!res.ok) throw new Error(json?.error || json?.detail || 'Failed to update employee');
             // refresh detail cache
             await detail.refetch();
             return json;
@@ -475,6 +549,7 @@ export function useEntityDataSource(entityKey: string): EntityDataSource | null 
     'hrm.ptoPolicy': 'pto-policies',
     'hrm.ptoPolicyAssignment': 'pto-policy-assignments',
     'hrm.ptoRequest': 'pto-requests',
+    'hrm.ptoRequestSelf': 'pto-requests-self',
     'hrm.ptoBalance': 'pto-balances',
     'hrm.ptoLedgerEntry': 'pto-ledger-entries',
   };

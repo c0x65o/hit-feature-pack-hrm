@@ -5,13 +5,10 @@ import { getDb } from '@/lib/db';
 import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
+import { forbiddenError, notFoundError, badRequestError, jsonError } from '../lib/api-errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
-}
 
 function getIdFromPath(request: NextRequest): string {
   const url = new URL(request.url);
@@ -160,7 +157,38 @@ export async function GET(request: NextRequest) {
   const last = String((employee as any).lastName || '').trim();
   const displayName = preferred || [first, last].filter(Boolean).join(' ').trim() || String((employee as any).userEmail || '');
 
-  return NextResponse.json({ ...employee, displayName, positionName, divisionName, departmentName, locationName });
+  let managerName: string | null = null;
+  const managerId = (employee as any).managerId;
+  if (managerId) {
+    const managerRows = await db
+      .select({
+        preferredName: employees.preferredName,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+        userEmail: employees.userEmail,
+      })
+      .from(employees)
+      .where(eq(employees.id, managerId))
+      .limit(1);
+    const manager = managerRows[0];
+    if (manager) {
+      const managerPreferred = String(manager.preferredName || '').trim();
+      const managerFirst = String(manager.firstName || '').trim();
+      const managerLast = String(manager.lastName || '').trim();
+      managerName =
+        managerPreferred || [managerFirst, managerLast].filter(Boolean).join(' ').trim() || String(manager.userEmail || '');
+    }
+  }
+
+  return NextResponse.json({
+    ...employee,
+    displayName,
+    positionName,
+    divisionName,
+    departmentName,
+    locationName,
+    managerName,
+  });
 }
 
 /**
@@ -183,7 +211,12 @@ export async function PUT(request: NextRequest) {
   // Check scope-based write access
   const canAccess = await canAccessEmployee(db, request, (existingEmployee as any).userEmail, 'write');
   if (!canAccess) {
-    return jsonError('Forbidden', 403);
+    return forbiddenError({
+      message: 'Permission denied',
+      detail: 'You can only edit your own employee record. To edit other employees, contact an admin to grant HRM write scope.',
+      code: 'HRM_WRITE_SCOPE_INSUFFICIENT',
+      requiredPermission: 'hrm.employees.write.scope.ldd or hrm.employees.write.scope.all',
+    });
   }
 
   const body = (await request.json().catch(() => null)) as
@@ -286,7 +319,7 @@ export async function PUT(request: NextRequest) {
         update.managerId = null;
       } else {
         if (mid === String(id)) {
-          return jsonError('managerId cannot reference the employee itself', 400);
+          return jsonError('An employee cannot be their own manager', 400);
         }
         const managerRows = await db.select({ id: employees.id }).from(employees).where(eq(employees.id, mid as any)).limit(1);
         if (!managerRows[0]) {

@@ -62,9 +62,12 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
         filterMode: serverTable.query.filterMode,
         sortBy: serverTable.query.sortBy,
         sortOrder: serverTable.query.sortOrder,
+        tableId,
+        viewId: serverTable.query.viewId ?? null,
     });
     const items = data?.items || [];
     const pagination = data?.pagination;
+    const serverGroupMeta = data?.groupMeta;
     const [actionLoading, setActionLoading] = useState({});
     const columns = useEntityDataTableColumns({
         listSpec: listSpec,
@@ -162,5 +165,5 @@ export function EntityListPage({ entityKey, onNavigate, emptyMessage, }) {
     const createAction = createHref && allowCreate ? (_jsx(Button, { variant: "primary", size: "sm", onClick: () => navigate(createHref), children: createLabel })) : null;
     const specActions = renderSpecHeaderActions();
     const headerActions = createAction || specActions ? (_jsxs("div", { className: "flex items-center gap-2", children: [createAction, specActions] })) : null;
-    return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [_jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
+    return (_jsxs(Page, { title: pageTitle, description: pageDescription, onNavigate: navigate, actions: headerActions || undefined, children: [_jsx(Card, { children: _jsx(DataTable, { columns: columns, data: items, loading: loading, emptyMessage: emptyMessage || 'No items yet.', onRowClick: (row) => navigate(detailHref(String(row.id))), onRefresh: refetch, refreshing: loading, total: pagination?.total, ...serverTable.dataTable, searchDebounceMs: 400, tableId: tableId, uiStateKey: uiStateKey, serverGroupMeta: serverGroupMeta || undefined, enableViews: true, showColumnVisibility: true, initialColumnVisibility: effectiveInitialColumnVisibility, initialSorting: listSpec.initialSorting }) }), _jsx(AlertDialog, { ...alertDialog.props })] }));
 }

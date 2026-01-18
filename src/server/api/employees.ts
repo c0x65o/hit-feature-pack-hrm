@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
     ensured: number | null;
     reactivated: number | null;
     deactivated: number | null;
+    deleted: number | null;
     provisioningError: string | null;
     authUrl: string | null;
     authDirectoryPath: string | null;
@@ -97,6 +98,7 @@ export async function GET(request: NextRequest) {
     ensured: null,
     reactivated: null,
     deactivated: null,
+    deleted: null,
     provisioningError: null,
     authUrl: null,
     authDirectoryPath: null,
@@ -238,7 +240,7 @@ export async function GET(request: NextRequest) {
     provisionMeta.authProxyProxiedFrom = authProxyProxiedFrom;
     provisionMeta.authUserCount = Array.isArray(users) ? users.length : 0;
 
-    const { ensured, reactivated, deactivated } = await syncEmployeesWithAuthUsers({
+    const { ensured, reactivated, deactivated, deleted } = await syncEmployeesWithAuthUsers({
       db,
       users,
       allowDeactivation,
@@ -246,6 +248,7 @@ export async function GET(request: NextRequest) {
     provisionMeta.ensured = ensured;
     provisionMeta.reactivated = reactivated;
     provisionMeta.deactivated = deactivated;
+    provisionMeta.deleted = deleted;
   } catch (e: any) {
     provisionMeta.provisioningError = e?.message ? String(e.message) : 'Provisioning failed';
     return NextResponse.json({ error: provisionMeta.provisioningError, meta: provisionMeta }, { status: 500 });
@@ -361,6 +364,7 @@ export async function GET(request: NextRequest) {
   interface EmployeeRow {
     id: string;
     userEmail: string;
+    profilePictureUrl: string | null;
     firstName: string;
     lastName: string;
     preferredName: string | null;
@@ -382,6 +386,7 @@ export async function GET(request: NextRequest) {
     .select({
       id: employees.id,
       userEmail: employees.userEmail,
+      profilePictureUrl: employees.profilePictureUrl,
       firstName: employees.firstName,
       lastName: employees.lastName,
       preferredName: employees.preferredName,
