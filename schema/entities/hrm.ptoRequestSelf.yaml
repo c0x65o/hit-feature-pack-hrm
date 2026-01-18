@@ -12,7 +12,7 @@ entities:
         new: /hub/pto/new
         detail: /hub/pto/{id}
       breadcrumbs:
-        - { label: My Hub, href: /hub }
+        - { label: My Hub }
         - { label: PTO, href: /hub/pto }
       actions:
         createLabel: Request PTO

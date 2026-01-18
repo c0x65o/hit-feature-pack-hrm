@@ -231,6 +231,13 @@ routes:
     params: { entityKey: hrm.ptoLedgerEntry }
 
 nav:
+  - id: hrm-my-pto
+    label: My PTO
+    icon: Calendar
+    path: /hub/pto
+    group: hub
+    weight: 20
+    showWhen: authenticated
   - id: hrm
     label: HRM
     icon: Users
