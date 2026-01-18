@@ -12,6 +12,16 @@ api:
       handler: employees-me
       description: "Get or upsert the current user's employee profile (name basics)."
 
+    # Employees list/detail (custom handlers with auto-provisioning)
+    - path: /api/hrm/employees
+      methods: [GET, POST]
+      handler: employees
+      description: "Employees list + auto-provisioning (custom handler)."
+    - path: /api/hrm/employees/[id]
+      methods: [GET, PUT, DELETE]
+      handler: employees-id
+      description: "Employee detail/update (custom handler)."
+
     # Manual employee sync
     - path: /api/hrm/employees/sync
       methods: [POST]

@@ -1,0 +1,1 @@
+{"version":3,"file":"FullOrgChart.d.ts","sourceRoot":"","sources":["../../../src/ui/components/FullOrgChart.tsx"],"names":[],"mappings":"AAaA,OAAO,0BAA0B,CAAC;AAelC,KAAK,iBAAiB,GAAG;IACvB,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,UAAU,CAAC,EAAE,CAAC,IAAI,EAAE,MAAM,KAAK,IAAI,CAAC;CACrC,CAAC;AAmIF,wBAAgB,YAAY,CAAC,EAAE,OAAO,EAAE,UAAU,EAAE,EAAE,iBAAiB,2CA4JtE"}

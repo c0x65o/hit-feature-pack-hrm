@@ -8,3 +8,8 @@
  */
 // Navigation config
 export { navContributions as nav } from './nav';
+// Custom pages
+export { OrgChartPage } from './pages';
+// UI components
+export { FullOrgChart } from './ui/components/FullOrgChart';
+export { OrgChart } from './ui/components/OrgChart';

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { and, eq, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { employees, userOrgAssignments } from '@/lib/feature-pack-schemas';
+import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
@@ -95,30 +95,27 @@ export async function GET(request) {
     if (!scope.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const selectFields = {
+        id: employees.id,
+        managerId: employees.managerId,
+        userEmail: employees.userEmail,
+        firstName: employees.firstName,
+        lastName: employees.lastName,
+        preferredName: employees.preferredName,
+        profilePictureUrl: employees.profilePictureUrl,
+        positionName: positions.name,
+        isActive: employees.isActive,
+    };
     const rows = scope.where
         ? await db
-            .select({
-            id: employees.id,
-            managerId: employees.managerId,
-            userEmail: employees.userEmail,
-            firstName: employees.firstName,
-            lastName: employees.lastName,
-            preferredName: employees.preferredName,
-            isActive: employees.isActive,
-        })
+            .select(selectFields)
             .from(employees)
+            .leftJoin(positions, eq(employees.positionId, positions.id))
             .where(scope.where)
         : await db
-            .select({
-            id: employees.id,
-            managerId: employees.managerId,
-            userEmail: employees.userEmail,
-            firstName: employees.firstName,
-            lastName: employees.lastName,
-            preferredName: employees.preferredName,
-            isActive: employees.isActive,
-        })
-            .from(employees);
+            .select(selectFields)
+            .from(employees)
+            .leftJoin(positions, eq(employees.positionId, positions.id));
     const nodesById = new Map();
     for (const row of rows) {
         nodesById.set(String(row.id), {
@@ -128,6 +125,8 @@ export async function GET(request) {
             firstName: String(row.firstName || ''),
             lastName: String(row.lastName || ''),
             preferredName: row.preferredName ? String(row.preferredName) : null,
+            profilePictureUrl: row.profilePictureUrl ? String(row.profilePictureUrl) : null,
+            positionName: row.positionName ? String(row.positionName) : null,
             isActive: Boolean(row.isActive),
             children: [],
         });

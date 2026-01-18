@@ -17,6 +17,13 @@ export declare const navContributions: readonly [{
         readonly icon: "IdCard";
         readonly roles: readonly ["admin"];
         readonly showWhen: "authenticated";
+    }, {
+        readonly id: "hrm-org-chart";
+        readonly label: "Organization Chart";
+        readonly path: "/hrm/org-chart";
+        readonly icon: "Network";
+        readonly roles: readonly ["admin"];
+        readonly showWhen: "authenticated";
     }];
 }];
 //# sourceMappingURL=nav.d.ts.map

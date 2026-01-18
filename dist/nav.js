@@ -20,6 +20,14 @@ export const navContributions = [
                 roles: ['admin'],
                 showWhen: 'authenticated',
             },
+            {
+                id: 'hrm-org-chart',
+                label: 'Organization Chart',
+                path: '/hrm/org-chart',
+                icon: 'Network',
+                roles: ['admin'],
+                showWhen: 'authenticated',
+            },
         ],
     },
 ];

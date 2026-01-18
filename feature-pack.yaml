@@ -29,6 +29,16 @@ api:
       handler: "@hit/feature-pack-hrm/server/api/employees-me"
       description: "Get or upsert the current user's employee profile (name basics)."
 
+    - path: /api/hrm/employees
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-hrm/server/api/employees"
+      description: "Employees list + auto-provisioning (custom handler)."
+
+    - path: /api/hrm/employees/[id]
+      methods: [GET, PUT, DELETE]
+      handler: "@hit/feature-pack-hrm/server/api/employees-id"
+      description: "Employee detail/update (custom handler)."
+
     - path: /api/hrm/employees/sync
       methods: [POST]
       handler: "@hit/feature-pack-hrm/server/api/employees-sync"
@@ -66,6 +76,10 @@ api:
 
 # Routes (schema-driven UI pages)
 routes:
+  # Organization Chart
+  - path: /hrm/org-chart
+    page: OrgChartPage
+    pack: hrm
   # Positions
   - path: /hrm/positions
     page: EntityList
@@ -103,6 +117,12 @@ nav:
         path: /hrm/employees
         icon: IdCard
         weight: 10
+        showWhen: authenticated
+      - id: hrm-org-chart
+        label: Organization Chart
+        path: /hrm/org-chart
+        icon: Network
+        weight: 20
         showWhen: authenticated
       - id: hrm-setup
         label: Setup

@@ -6,8 +6,8 @@ version: 1
 # The API merges them alongside user-defined/shared views from `table_views`.
 
 tableViews:
-  hrm.employee:
-    - id: hrm.employee.active
+  hrm.employees:
+    - id: hrm.employees.active
       name: Active Employees
       description: Only active employees
       isDefault: true
