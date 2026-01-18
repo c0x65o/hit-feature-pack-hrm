@@ -1,11 +1,11 @@
 -- Add PTO schema: leave types, policies, assignments, requests, balances, ledger
 
 -- Add employee fields used by PTO workflows
-ALTER TABLE "hrm_employees" ADD COLUMN "hire_date" date;
-ALTER TABLE "hrm_employees" ADD COLUMN "job_level" integer;
+ALTER TABLE "hrm_employees" ADD COLUMN IF NOT EXISTS "hire_date" date;
+ALTER TABLE "hrm_employees" ADD COLUMN IF NOT EXISTS "job_level" integer;
 
 -- Add optional position level
-ALTER TABLE "hrm_positions" ADD COLUMN "level" integer;
+ALTER TABLE "hrm_positions" ADD COLUMN IF NOT EXISTS "level" integer;
 
 -- Enums
 CREATE TYPE "pto_balance_mode" AS ENUM ('unlimited', 'tracked');

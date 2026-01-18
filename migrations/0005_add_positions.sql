@@ -12,7 +12,7 @@ CREATE TABLE "hrm_positions" (
 CREATE INDEX "hrm_positions_name_idx" ON "hrm_positions" ("name");
 
 -- Add position_id column to hrm_employees
-ALTER TABLE "hrm_employees" ADD COLUMN "position_id" uuid;
+ALTER TABLE "hrm_employees" ADD COLUMN IF NOT EXISTS "position_id" uuid;
 
 CREATE INDEX "hrm_employees_position_idx" ON "hrm_employees" ("position_id");
 
