@@ -3,8 +3,6 @@ import { and, asc, desc, eq, like, ne, or, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { employees, positions, userOrgAssignments } from '@/lib/feature-pack-schemas';
 import { requirePageAccess, extractUserFromRequest } from '../auth';
-import { getAuthUrlFromRequest, getForwardedBearerFromRequest, syncEmployeesWithAuthUsers, } from '../lib/employee-provisioning';
-import { checkAuthCoreReadScope } from '@hit/feature-pack-auth-core/server/lib/require-action';
 import { resolveHrmScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -56,161 +54,8 @@ export async function GET(request) {
     const managerId = (sp.get('managerId') || '').trim();
     const sortBy = (sp.get('sortBy') || 'lastName').trim();
     const sortOrder = (sp.get('sortOrder') || 'asc').trim().toLowerCase() === 'desc' ? 'desc' : 'asc';
-    // Foolproof invariant: ensure employee rows exist for all auth users before listing.
-    // No manual syncs. This runs on every list call and is idempotent.
-    const provisionMeta = {
-        authDirectoryStatus: null,
-        authUserCount: null,
-        ensured: null,
-        reactivated: null,
-        deactivated: null,
-        deleted: null,
-        provisioningError: null,
-        authUrl: null,
-        authDirectoryPath: null,
-        authDirectorySource: null,
-        authDirectoryLimit: null,
-        allowDeactivation: null,
-        bearerPresent: false,
-        cookiePresent: Boolean(request.cookies.get('hit_token')?.value),
-        authProxyProxiedFrom: null,
-    };
     const debugEnabled = String(process.env.HIT_AUTH_DEBUG || process.env.HIT_DEBUG || '').trim().toLowerCase() === 'true' ||
         String(process.env.HIT_AUTH_DEBUG || process.env.HIT_DEBUG || '').trim() === '1';
-    try {
-        const bearer = getForwardedBearerFromRequest(request);
-        const rawToken = bearer?.startsWith('Bearer ') ? bearer.slice(7).trim() : (bearer || '').trim();
-        provisionMeta.bearerPresent = Boolean(bearer);
-        const authUrl = getAuthUrlFromRequest(request);
-        provisionMeta.authUrl = authUrl;
-        const adminAccess = await checkAuthCoreReadScope(request);
-        const directoryLimit = 500;
-        let users = [];
-        let allowDeactivation = false;
-        let authDirectoryPath = '/directory/users';
-        let authDirectorySource = 'directory';
-        let authProxyProxiedFrom = null;
-        let authDirectoryStatus = null;
-        let usedAdmin = false;
-        if (adminAccess.ok) {
-            const adminHeaders = { 'Content-Type': 'application/json' };
-            if (bearer)
-                adminHeaders['Authorization'] = bearer;
-            if (rawToken)
-                adminHeaders['X-HIT-Token-Raw'] = rawToken;
-            // Forward cookies + base URL hints in case auth is remote or headers are stripped.
-            const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
-            if (cookieHeader)
-                adminHeaders['Cookie'] = cookieHeader;
-            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
-            const proto = request.headers.get('x-forwarded-proto') || 'https';
-            if (host)
-                adminHeaders['X-Frontend-Base-URL'] = `${proto}://${host}`;
-            const adminRes = await fetch(`${authUrl}/users`, {
-                method: 'GET',
-                headers: adminHeaders,
-                credentials: 'include',
-            });
-            authDirectoryStatus = adminRes.status;
-            if (adminRes.ok) {
-                const adminUsers = await adminRes.json().catch(() => []);
-                if (!Array.isArray(adminUsers)) {
-                    return NextResponse.json({ error: 'Unexpected auth users response', meta: provisionMeta }, { status: 500 });
-                }
-                users = adminUsers;
-                allowDeactivation = true;
-                authDirectoryPath = '/users';
-                authDirectorySource = 'admin';
-                usedAdmin = true;
-            }
-        }
-        if (!usedAdmin) {
-            const headers = { 'Content-Type': 'application/json' };
-            if (bearer)
-                headers['Authorization'] = bearer;
-            if (rawToken)
-                headers['X-HIT-Token-Raw'] = rawToken;
-            // Forward cookies to the proxy as a fallback auth mechanism.
-            // This improves parity when Authorization headers are stripped by an intermediary.
-            const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
-            if (cookieHeader)
-                headers['Cookie'] = cookieHeader;
-            // When calling the auth module directly, it needs this to fetch the compiled permissions catalog.
-            const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
-            const proto = request.headers.get('x-forwarded-proto') || 'https';
-            if (host)
-                headers['X-Frontend-Base-URL'] = `${proto}://${host}`;
-            const res = await fetch(`${authUrl}/directory/users?limit=${directoryLimit}`, {
-                method: 'GET',
-                headers,
-                credentials: 'include',
-            });
-            authDirectoryStatus = res.status;
-            authProxyProxiedFrom = res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From');
-            if (debugEnabled) {
-                console.warn('[hrm employees] auth directory response', {
-                    status: res.status,
-                    ok: res.ok,
-                    authUrl,
-                    proxiedFrom: res.headers.get('x-proxied-from') || res.headers.get('X-Proxied-From'),
-                });
-            }
-            if (!res.ok) {
-                const body = await res.json().catch(() => ({}));
-                if (debugEnabled) {
-                    console.warn('[hrm employees] auth directory error body', body);
-                }
-                const baseMsg = body?.error || body?.detail || body?.message || `Auth directory users failed (${res.status})`;
-                const detail = debugEnabled
-                    ? `auth_url=${authUrl} status=${res.status} body=${JSON.stringify(body)}`
-                    : undefined;
-                const msg = debugEnabled && detail ? `${baseMsg} ${detail}` : baseMsg;
-                // IMPORTANT: don't silently return an empty employee list; this hides the root cause.
-                return NextResponse.json({
-                    error: msg,
-                    ...(detail ? { detail } : {}),
-                    // Keep extra info compact but actionable for debugging.
-                    upstream: { path: '/directory/users', status: res.status, body },
-                    meta: provisionMeta,
-                }, { status: res.status });
-            }
-            const directoryUsers = await res.json().catch(() => []);
-            if (!Array.isArray(directoryUsers)) {
-                return NextResponse.json({ error: 'Unexpected auth directory response', meta: provisionMeta }, { status: 500 });
-            }
-            users = directoryUsers;
-            allowDeactivation = false;
-            authDirectoryPath = '/directory/users';
-            authDirectorySource = 'directory';
-        }
-        const currentEmail = String(user?.email || '').trim().toLowerCase();
-        if (currentEmail) {
-            const hasCurrent = users.some((u) => String(u?.email || '').trim().toLowerCase() === currentEmail);
-            if (!hasCurrent) {
-                users.push({ email: currentEmail, isActive: true });
-            }
-        }
-        provisionMeta.authDirectoryStatus = authDirectoryStatus;
-        provisionMeta.authDirectoryPath = authDirectoryPath;
-        provisionMeta.authDirectorySource = authDirectorySource;
-        provisionMeta.authDirectoryLimit = authDirectorySource === 'directory' ? directoryLimit : null;
-        provisionMeta.allowDeactivation = allowDeactivation;
-        provisionMeta.authProxyProxiedFrom = authProxyProxiedFrom;
-        provisionMeta.authUserCount = Array.isArray(users) ? users.length : 0;
-        const { ensured, reactivated, deactivated, deleted } = await syncEmployeesWithAuthUsers({
-            db,
-            users,
-            allowDeactivation,
-        });
-        provisionMeta.ensured = ensured;
-        provisionMeta.reactivated = reactivated;
-        provisionMeta.deactivated = deactivated;
-        provisionMeta.deleted = deleted;
-    }
-    catch (e) {
-        provisionMeta.provisioningError = e?.message ? String(e.message) : 'Provisioning failed';
-        return NextResponse.json({ error: provisionMeta.provisioningError, meta: provisionMeta }, { status: 500 });
-    }
     try {
         // Resolve scope mode for read access
         const mode = await resolveHrmScopeMode(request, { entity: 'employees', verb: 'read' });
@@ -370,7 +215,6 @@ export async function GET(request) {
                 total,
                 totalPages: Math.ceil(total / pageSize),
             },
-            meta: provisionMeta,
         });
     }
     catch (e) {
