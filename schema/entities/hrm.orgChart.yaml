@@ -26,6 +26,7 @@ entities:
         list: /api/hrm/employees/org-tree
 
     list:
+      tableId: hrm.orgChart
       widget: orgChart
       widgetMode: orgChart
       widgetOptions:
