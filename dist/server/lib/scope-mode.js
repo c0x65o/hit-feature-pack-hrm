@@ -1,3 +1,4 @@
+import { extractUserFromRequest } from '../auth';
 import { checkHrmAction } from './require-action';
 /**
  * Resolve effective scope mode using a tree:
@@ -14,6 +15,10 @@ export async function resolveHrmScopeMode(request, args) {
     const { entity, verb } = args;
     const entityPrefix = entity ? `hrm.${entity}.${verb}.scope` : `hrm.${verb}.scope`;
     const globalPrefix = `hrm.${verb}.scope`;
+    const user = extractUserFromRequest(request);
+    const isAdmin = Boolean((user?.roles || []).some((r) => String(r || '').trim().toLowerCase() === 'admin'));
+    if (isAdmin)
+        return 'any';
     // Most restrictive wins (first match returned).
     const modes = ['none', 'own', 'ldd', 'any'];
     const checkPrefix = async (prefix) => {

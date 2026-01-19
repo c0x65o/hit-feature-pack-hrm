@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { extractUserFromRequest } from '../auth';
 import { checkHrmAction } from './require-action';
 
 export type ScopeMode = 'none' | 'own' | 'ldd' | 'any';
@@ -23,6 +24,12 @@ export async function resolveHrmScopeMode(
   const { entity, verb } = args;
   const entityPrefix = entity ? `hrm.${entity}.${verb}.scope` : `hrm.${verb}.scope`;
   const globalPrefix = `hrm.${verb}.scope`;
+
+  const user = extractUserFromRequest(request);
+  const isAdmin = Boolean(
+    (user?.roles || []).some((r) => String(r || '').trim().toLowerCase() === 'admin')
+  );
+  if (isAdmin) return 'any';
 
   // Most restrictive wins (first match returned).
   const modes: ScopeMode[] = ['none', 'own', 'ldd', 'any'];
