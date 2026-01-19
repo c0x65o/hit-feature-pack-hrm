@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const bearer = getForwardedBearerFromRequest(request);
+    const rawToken = bearer?.startsWith('Bearer ') ? bearer.slice(7).trim() : (bearer || '').trim();
     provisionMeta.bearerPresent = Boolean(bearer);
 
     const authUrl = getAuthUrlFromRequest(request);
@@ -134,6 +135,7 @@ export async function GET(request: NextRequest) {
     if (adminAccess.ok) {
       const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
       if (bearer) adminHeaders['Authorization'] = bearer;
+      if (rawToken) adminHeaders['X-HIT-Token-Raw'] = rawToken;
       // Forward cookies + base URL hints in case auth is remote or headers are stripped.
       const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
       if (cookieHeader) adminHeaders['Cookie'] = cookieHeader;
@@ -164,6 +166,7 @@ export async function GET(request: NextRequest) {
     if (!usedAdmin) {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (bearer) headers['Authorization'] = bearer;
+      if (rawToken) headers['X-HIT-Token-Raw'] = rawToken;
       // Forward cookies to the proxy as a fallback auth mechanism.
       // This improves parity when Authorization headers are stripped by an intermediary.
       const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';

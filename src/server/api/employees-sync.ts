@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
   const bearer = getForwardedBearerFromRequest(request);
+  const rawToken = bearer?.startsWith('Bearer ') ? bearer.slice(7).trim() : (bearer || '').trim();
   const authUrl = getAuthUrlFromRequest(request);
 
   const adminAccess = await checkAuthCoreReadScope(request);
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
   if (adminAccess.ok) {
     const adminHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
     if (bearer) adminHeaders['Authorization'] = bearer;
+    if (rawToken) adminHeaders['X-HIT-Token-Raw'] = rawToken;
     const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
     if (cookieHeader) adminHeaders['Cookie'] = cookieHeader;
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
   if (!usedAdmin) {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (bearer) headers['Authorization'] = bearer;
+    if (rawToken) headers['X-HIT-Token-Raw'] = rawToken;
     const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
     if (cookieHeader) headers['Cookie'] = cookieHeader;
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || '';

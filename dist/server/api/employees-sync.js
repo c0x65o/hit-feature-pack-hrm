@@ -25,6 +25,7 @@ export async function POST(request) {
         return jsonError('Unauthorized', 401);
     const db = getDb();
     const bearer = getForwardedBearerFromRequest(request);
+    const rawToken = bearer?.startsWith('Bearer ') ? bearer.slice(7).trim() : (bearer || '').trim();
     const authUrl = getAuthUrlFromRequest(request);
     const adminAccess = await checkAuthCoreReadScope(request);
     const directoryLimit = 500;
@@ -38,6 +39,8 @@ export async function POST(request) {
         const adminHeaders = { 'Content-Type': 'application/json' };
         if (bearer)
             adminHeaders['Authorization'] = bearer;
+        if (rawToken)
+            adminHeaders['X-HIT-Token-Raw'] = rawToken;
         const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
         if (cookieHeader)
             adminHeaders['Cookie'] = cookieHeader;
@@ -67,6 +70,8 @@ export async function POST(request) {
         const headers = { 'Content-Type': 'application/json' };
         if (bearer)
             headers['Authorization'] = bearer;
+        if (rawToken)
+            headers['X-HIT-Token-Raw'] = rawToken;
         const cookieHeader = request.headers.get('cookie') || request.headers.get('Cookie') || '';
         if (cookieHeader)
             headers['Cookie'] = cookieHeader;
